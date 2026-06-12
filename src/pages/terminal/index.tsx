@@ -389,6 +389,23 @@ const TerminalPage = () => {
       }
     });
 
+    // xterm.js 通过 onBinary 发送非 UTF-8 的回报序列（如鼠标上报、部分终端
+    // 能力探测的回应）。必须一并转发给 PTY，否则像 vim 这类会等待探测回应的
+    // 全屏程序会一直卡住等不到回应。onBinary 给的是「二进制字符串」（每个字符
+    // 的码点即一个字节），要按字节发送，不能用 TextEncoder 做 UTF-8 编码。
+    const termBinaryDisposable = term.onBinary((data) => {
+      if (disposed) {
+        return;
+      }
+      if (ws.readyState === WebSocket.OPEN) {
+        const buffer = new Uint8Array(data.length);
+        for (let i = 0; i < data.length; i++) {
+          buffer[i] = data.charCodeAt(i) & 0xff;
+        }
+        ws.send(buffer);
+      }
+    });
+
     const handleResize = () => {
       resizeTerminal();
     };
@@ -449,6 +466,7 @@ const TerminalPage = () => {
         clearTimeout(firstBinaryTimeout);
       }
       termDataDisposable.dispose();
+      termBinaryDisposable.dispose();
       term.dispose();
       if (customCssStyle.parentNode) {
         customCssStyle.parentNode.removeChild(customCssStyle);
