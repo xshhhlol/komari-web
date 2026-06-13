@@ -306,11 +306,11 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
       <Grid
         columns={{ initial: "1fr", md: sidebarOpen ? "240px 1fr" : "0px 1fr" }} // 动态调整网格列
         rows={{ initial: "auto 1fr", md: "auto 1fr" }}
+        className="app-bg"
         style={{
           height: "100vh",
           width: "100vw",
           overflow: "auto",
-          backgroundColor: "var(--accent-1)",
         }}
       >
         {/* Navbar */}
@@ -325,7 +325,13 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
             p="2"
             justify="between"
             align="center"
-            className="border-b-1"
+            className="glass"
+            style={{
+              position: "sticky",
+              top: 0,
+              zIndex: 20,
+              borderBottom: "1px solid var(--accent-a4)",
+            }}
           >
             <Flex gap="3" align="center">
               <IconButton
@@ -339,7 +345,9 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
                 <TablerMenu2 />
               </IconButton>
               <a href="/" target="_blank" rel="noopener noreferrer">
-                <label className="text-xl font-bold">Komari</label>
+                <label className="text-xl font-bold brand-wordmark cursor-pointer">
+                  Komari
+                </label>
               </a>
               {updateAvailable && releasesSince.length > 0 && (
                 <Tips
@@ -437,8 +445,9 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
             initial="closed"
             animate={sidebarOpen ? "open" : "closed"}
             exit="closed"
+            className={isMobile ? "glass" : undefined}
             style={{
-              backgroundColor: "var(--accent-1)",
+              backgroundColor: isMobile ? undefined : "transparent",
               height: "100%",
               position: isMobile ? "absolute" : "relative",
               zIndex: isMobile ? 10 : 1,
@@ -448,11 +457,15 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
           >
             <Flex
               gap="3"
-              className="p-2 border-r-1"
+              className="p-2"
               direction="column"
               justify="start"
               align="start"
-              style={{ height: "100%", minWidth: "240px" }}
+              style={{
+                height: "100%",
+                minWidth: "240px",
+                borderRight: isMobile ? "none" : "1px solid var(--accent-a4)",
+              }}
             >
               {/* 关闭按钮 */}
               <IconButton
@@ -652,18 +665,19 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
           variants={contentVariants}
           animate={sidebarOpen ? "open" : "closed"}
           style={{
-            backgroundColor: "var(--accent-3)",
+            backgroundColor: "transparent",
             display: isMobile && sidebarOpen ? "none" : "block",
             height: "100%", // Ensure the container takes full height
             overflow: "hidden", // Prevent this container from scrolling
+            padding: isMobile ? "8px" : "14px",
+            boxSizing: "border-box",
           }}
         >
           <div
+            className="surface-card"
             style={{
-              backgroundColor: "var(--accent-1)",
               height: "100%",
-              borderRadius: "0",
-              padding: isMobile ? "8px" : "16px",
+              padding: isMobile ? "12px" : "20px",
               overflowY: "auto",
               boxSizing: "border-box",
             }}
@@ -760,29 +774,14 @@ const SidebarItem = ({
   }
 
   return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className="group transition-colors duration-200 hover:bg-accent-3 rounded-md"
-    >
+    <Link to={to} onClick={onClick} className="group">
       <Flex
-        className="p-2 gap-2"
+        className={`p-2 gap-2 nav-pill ${isActive ? "nav-pill-active" : ""}`}
         align="center"
-        style={{
-          borderLeft: isActive
-            ? "4px solid var(--accent-8)"
-            : "4px solid transparent",
-          borderRadius: "6px",
-          backgroundColor: isActive ? "var(--accent-4)" : "transparent",
-          color: isActive ? "var(--accent-10)" : "inherit",
-          transition: "background-color 0.2s, border-color 0.2s",
-        }}
+        style={{ borderRadius: "10px" }}
       >
         <span
-          style={{
-            color: isActive ? "var(--accent-10)" : "inherit",
-            opacity: isActive ? 1 : 0.7,
-          }}
+          style={{ color: "inherit", opacity: isActive ? 1 : 0.7 }}
           className="flex w-4 h-5 items-center justify-center"
         >
           {icon}

@@ -74,6 +74,8 @@ const App = () => {
           appearance={resolvedAppearance}
           accentColor={color}
           scaling="110%"
+          radius="large"
+          panelBackground="translucent"
           className="theme-root"
           style={{
             backgroundColor: "transparent",

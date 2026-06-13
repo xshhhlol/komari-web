@@ -145,12 +145,18 @@
 
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(80,80,80,0.4);
-  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent-8) 45%, transparent);
+  border-radius: 9999px;
   border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--accent-9) 65%, transparent);
   background-clip: padding-box;
 }
 
@@ -164,5 +170,127 @@
 
 body, * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(80,80,80,0.4) transparent;
+  scrollbar-color: color-mix(in srgb, var(--accent-8) 45%, transparent) transparent;
+}
+
+/* ============================================================
+   Modern / tech / lively admin skin
+   Everything derives from the Radix accent scale so it adapts
+   to whatever accent color the user picks in the ColorSwitch.
+   ============================================================ */
+
+/* Ambient gradient-mesh background for the whole admin shell */
+.app-bg {
+  position: relative;
+  background-color: var(--accent-1);
+  background-image:
+    radial-gradient(46rem 46rem at 108% -8%, var(--accent-a4), transparent 60%),
+    radial-gradient(40rem 40rem at -10% 112%, var(--accent-a3), transparent 58%),
+    radial-gradient(34rem 34rem at 92% 108%, color-mix(in srgb, var(--accent-a3), transparent 30%), transparent 60%);
+  background-attachment: fixed;
+}
+.dark .app-bg {
+  background-color: color-mix(in srgb, var(--accent-1) 86%, black 14%);
+}
+
+/* Frosted-glass surface (navbar / sidebar) */
+.glass {
+  background: color-mix(in srgb, var(--accent-1) 68%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+/* Elevated translucent content card */
+.surface-card {
+  background: color-mix(in srgb, var(--accent-1) 82%, transparent);
+  border: 1px solid var(--accent-a4);
+  border-radius: 18px;
+  box-shadow:
+    0 1px 2px var(--accent-a3),
+    0 18px 40px -24px var(--accent-a7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Gradient brand wordmark */
+.brand-wordmark {
+  background: linear-gradient(120deg, var(--accent-11), var(--accent-9) 60%, var(--accent-10));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  letter-spacing: -0.02em;
+}
+
+/* Active sidebar item: gradient pill with accent glow */
+.nav-pill-active {
+  background: linear-gradient(135deg, var(--accent-9), var(--accent-10));
+  color: var(--accent-contrast);
+  box-shadow: 0 8px 20px -8px var(--accent-a9);
+}
+.nav-pill {
+  transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+.nav-pill:hover {
+  background: var(--accent-a3);
+}
+.nav-pill-active:hover {
+  background: linear-gradient(135deg, var(--accent-9), var(--accent-10));
+}
+.nav-pill-active svg {
+  color: var(--accent-contrast) !important;
+}
+
+/* Group filter pills */
+.group-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid var(--accent-a5);
+  color: var(--accent-11);
+  background: color-mix(in srgb, var(--accent-2) 70%, transparent);
+  transition: transform 0.16s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease;
+}
+.group-pill:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-a8);
+  background: var(--accent-a3);
+}
+.group-pill[data-active="true"] {
+  border-color: transparent;
+  color: var(--accent-contrast);
+  background: linear-gradient(135deg, var(--accent-9), var(--accent-10));
+  box-shadow: 0 8px 18px -8px var(--accent-a9);
+}
+.group-pill[data-active="true"] .group-pill-count {
+  background: color-mix(in srgb, white 26%, transparent);
+  color: inherit;
+}
+.group-pill-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.3rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  background: var(--accent-a4);
+  color: var(--accent-11);
+}
+
+/* Lively table rows */
+.tech-table tbody tr {
+  transition: background-color 0.16s ease, box-shadow 0.16s ease;
+}
+.tech-table tbody tr:hover {
+  background: var(--accent-a2);
 }

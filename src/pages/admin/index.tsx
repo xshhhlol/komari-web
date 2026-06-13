@@ -19,7 +19,6 @@ import {
   IconButton,
   TextArea,
   SegmentedControl,
-  Select,
 } from "@radix-ui/themes";
 import {
   CircleDollarSign,
@@ -111,7 +110,15 @@ const Layout = () => {
     () => getGroups(Array.isArray(nodeDetail) ? nodeDetail : []),
     [nodeDetail]
   );
-  const hasUngrouped = nodes.some((n) => !(n.group || "").trim());
+  const groupCounts = React.useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const n of Array.isArray(nodeDetail) ? nodeDetail : []) {
+      const g = (n.group || "").trim();
+      if (g) m[g] = (m[g] || 0) + 1;
+    }
+    return m;
+  }, [nodeDetail]);
+  const ungroupedCount = nodes.filter((n) => !(n.group || "").trim()).length;
 
   // 当前选中的分组若已不存在（被重命名/删除），回退到“全部”
   useEffect(() => {
@@ -150,11 +157,18 @@ const Layout = () => {
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         selectedNodes={selectedNodes}
-        groups={groups}
-        hasUngrouped={hasUngrouped}
-        groupFilter={groupFilter}
-        setGroupFilter={setGroupFilter}
       />
+
+      {(groups.length > 0 || ungroupedCount > 0) && (
+        <GroupFilterPills
+          groups={groups}
+          counts={groupCounts}
+          total={nodes.length}
+          ungroupedCount={ungroupedCount}
+          groupFilter={groupFilter}
+          setGroupFilter={setGroupFilter}
+        />
+      )}
 
       <NodeTable
         nodes={filteredNodes}
@@ -169,18 +183,10 @@ const Header = ({
   searchTerm,
   setSearchTerm,
   selectedNodes,
-  groups,
-  hasUngrouped,
-  groupFilter,
-  setGroupFilter,
 }: {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   selectedNodes: string[];
-  groups: string[];
-  hasUngrouped: boolean;
-  groupFilter: string;
-  setGroupFilter: (g: string) => void;
 }) => {
   const { t } = useTranslation();
   const { refresh } = useNodeDetails();
@@ -219,28 +225,6 @@ const Header = ({
         )}
       </Flex>
       <Flex gap="2" wrap="wrap">
-        <Select.Root value={groupFilter} onValueChange={setGroupFilter}>
-          <Select.Trigger
-            variant="surface"
-            aria-label={t("admin.group.filterByGroup", "按分组筛选")}
-          />
-          <Select.Content>
-            <Select.Item value={GROUP_ALL}>
-              {t("admin.group.filterAll", "全部分组")}
-            </Select.Item>
-            {hasUngrouped && (
-              <Select.Item value={GROUP_UNGROUPED}>
-                {t("admin.group.ungrouped", "未分组")}
-              </Select.Item>
-            )}
-            {groups.length > 0 && <Select.Separator />}
-            {groups.map((g) => (
-              <Select.Item key={g} value={g}>
-                {g}
-              </Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
         <GroupManageButton />
         <TextField.Root
           placeholder={t("admin.nodeTable.searchByName")}
@@ -271,6 +255,69 @@ const Header = ({
           </Dialog.Content>
         </Dialog.Root>
       </Flex>
+    </Flex>
+  );
+};
+
+// 顶部分组筛选：水平平铺的分组胶囊（全部 / 未分组 / 各分组），点击即筛选。
+const GroupFilterPills = ({
+  groups,
+  counts,
+  total,
+  ungroupedCount,
+  groupFilter,
+  setGroupFilter,
+}: {
+  groups: string[];
+  counts: Record<string, number>;
+  total: number;
+  ungroupedCount: number;
+  groupFilter: string;
+  setGroupFilter: (g: string) => void;
+}) => {
+  const { t } = useTranslation();
+  const Pill = ({
+    value,
+    label,
+    count,
+  }: {
+    value: string;
+    label: string;
+    count: number;
+  }) => (
+    <button
+      type="button"
+      className="group-pill"
+      data-active={groupFilter === value}
+      onClick={() => setGroupFilter(value)}
+      title={label}
+    >
+      <span
+        style={{
+          maxWidth: 160,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {label}
+      </span>
+      <span className="group-pill-count">{count}</span>
+    </button>
+  );
+  return (
+    <Flex gap="2" wrap="wrap" align="center">
+      <Pill value={GROUP_ALL} label={t("admin.group.filterAll", "全部分组")} count={total} />
+      {ungroupedCount > 0 && (
+        <Pill
+          value={GROUP_UNGROUPED}
+          label={t("admin.group.ungrouped", "未分组")}
+          count={ungroupedCount}
+        />
+      )}
+      {groups.map((g) => (
+        <Pill key={g} value={g} label={g} count={counts[g] ?? 0} />
+      ))}
     </Flex>
   );
 };
@@ -663,9 +710,10 @@ const NodeTable = ({
   };
   return (
     <div
-      className={`rounded-md overflow-hidden ${
+      className={`tech-table rounded-xl overflow-hidden ${
         isDragging ? "select-none" : ""
       }`}
+      style={{ border: "1px solid var(--accent-a4)" }}
     >
       <DndContext
         sensors={sensors}
@@ -674,7 +722,12 @@ const NodeTable = ({
         onDragEnd={handleDragEnd}
       >
         <Table>
-          <TableHeader style={{ backgroundColor: "var(--accent-4)" }}>
+          <TableHeader
+            style={{
+              background:
+                "linear-gradient(180deg, var(--accent-a3), var(--accent-a2))",
+            }}
+          >
             <TableRow>
               <TableHead></TableHead>
               <TableHead>
