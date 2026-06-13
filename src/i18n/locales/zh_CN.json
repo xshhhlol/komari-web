@@ -99,7 +99,8 @@
       "trafficLimitType_min": "取最小",
       "trafficLimitType_sum": "总和",
       "trafficLimitType_up": "仅上传",
-      "waiting": "等待..."
+      "waiting": "等待...",
+      "groupPlaceholder": "选择已有分组或输入新分组"
     },
     "nodeTable": {
       "addNode": "添加节点",
@@ -169,6 +170,18 @@
       "login_description": "当有新的会话登录到Komari时，向您发送通知",
       "traffic": "流量用量",
       "traffic_description": "Komari将会在服务器到达指定的流量使用百分比时发送通知，并以5%为梯度持续提醒。如果服务器没有设置流量阈值，不发送通知。设置为0禁用流量提醒。"
+    },
+    "group": {
+      "manage": "分组管理",
+      "manageDescription": "重命名或删除分组将同步更新组内所有服务器。删除分组仅清空其分组标签，不会删除服务器。",
+      "rename": "重命名",
+      "renameSuccess": "重命名成功",
+      "deleteSuccess": "已删除分组",
+      "empty": "暂无分组",
+      "exists": "分组已存在",
+      "filterAll": "全部分组",
+      "ungrouped": "未分组",
+      "filterByGroup": "按分组筛选"
     }
   },
   "cancel": "取消",

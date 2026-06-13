@@ -99,7 +99,8 @@
       "trafficLimitType_min": "Min",
       "trafficLimitType_sum": "Sum",
       "trafficLimitType_up": "Upload Only",
-      "waiting": "wait..."
+      "waiting": "wait...",
+      "groupPlaceholder": "Select an existing group or enter a new one"
     },
     "nodeTable": {
       "addNode": "Add",
@@ -169,6 +170,18 @@
       "login_description": "Send a notification when a new session logs into Komari.",
       "traffic": "Traffic Usage",
       "traffic_description": "Komari will send notifications when the server reaches the specified percentage of traffic usage, with reminders at 5% increments. If no traffic threshold is set, no notifications will be sent. Set to 0 to disable traffic reminders."
+    },
+    "group": {
+      "manage": "Manage Groups",
+      "manageDescription": "Renaming or deleting a group updates all servers in it. Deleting a group only clears its group label; it does not delete the servers.",
+      "rename": "Rename",
+      "renameSuccess": "Renamed successfully",
+      "deleteSuccess": "Group deleted",
+      "empty": "No groups yet",
+      "exists": "Group already exists",
+      "filterAll": "All groups",
+      "ungrouped": "Ungrouped",
+      "filterByGroup": "Filter by group"
     }
   },
   "cancel": "Cancel",

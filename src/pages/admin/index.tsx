@@ -19,11 +19,13 @@ import {
   IconButton,
   TextArea,
   SegmentedControl,
+  Select,
 } from "@radix-ui/themes";
 import {
   CircleDollarSign,
   Copy,
   Download,
+  FolderCog,
   MenuIcon,
   Pencil,
   Plus,
@@ -80,6 +82,15 @@ import {
 import { useSettings } from "@/lib/api";
 import { SelectOrInput } from "@/components/ui/select-or-input";
 
+// 分组过滤的特殊取值（"" 不能作为 Radix Select 的 value）
+const GROUP_ALL = "__all__";
+const GROUP_UNGROUPED = "__ungrouped__";
+
+// 从节点列表中提取去重、排序后的分组名（忽略空分组）
+const getGroups = (nodes: NodeDetail[]): string[] =>
+  Array.from(
+    new Set(nodes.map((n) => (n.group || "").trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
 
 const NodeDetailsPage = () => {
   return (
@@ -92,14 +103,38 @@ const NodeDetailsPage = () => {
 const Layout = () => {
   const { nodeDetail, isLoading, error, refresh } = useNodeDetails();
   const [searchTerm, setSearchTerm] = useState("");
+  const [groupFilter, setGroupFilter] = useState<string>(GROUP_ALL);
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
-  const filteredNodes = Array.isArray(nodeDetail)
-    ? nodeDetail
-        .filter((node) =>
-          node.name.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        .sort((a, b) => a.weight - b.weight)
-    : [];
+
+  const nodes = Array.isArray(nodeDetail) ? nodeDetail : [];
+  const groups = React.useMemo(
+    () => getGroups(Array.isArray(nodeDetail) ? nodeDetail : []),
+    [nodeDetail]
+  );
+  const hasUngrouped = nodes.some((n) => !(n.group || "").trim());
+
+  // 当前选中的分组若已不存在（被重命名/删除），回退到“全部”
+  useEffect(() => {
+    if (
+      groupFilter !== GROUP_ALL &&
+      groupFilter !== GROUP_UNGROUPED &&
+      !groups.includes(groupFilter)
+    ) {
+      setGroupFilter(GROUP_ALL);
+    }
+  }, [groups, groupFilter]);
+
+  const filteredNodes = nodes
+    .filter((node) =>
+      node.name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .filter((node) => {
+      if (groupFilter === GROUP_ALL) return true;
+      const g = (node.group || "").trim();
+      if (groupFilter === GROUP_UNGROUPED) return !g;
+      return g === groupFilter;
+    })
+    .sort((a, b) => a.weight - b.weight);
 
   useEffect(() => {
     const interval = setInterval(() => { refresh() }, 5000);
@@ -115,6 +150,10 @@ const Layout = () => {
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         selectedNodes={selectedNodes}
+        groups={groups}
+        hasUngrouped={hasUngrouped}
+        groupFilter={groupFilter}
+        setGroupFilter={setGroupFilter}
       />
 
       <NodeTable
@@ -130,10 +169,18 @@ const Header = ({
   searchTerm,
   setSearchTerm,
   selectedNodes,
+  groups,
+  hasUngrouped,
+  groupFilter,
+  setGroupFilter,
 }: {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   selectedNodes: string[];
+  groups: string[];
+  hasUngrouped: boolean;
+  groupFilter: string;
+  setGroupFilter: (g: string) => void;
 }) => {
   const { t } = useTranslation();
   const { refresh } = useNodeDetails();
@@ -171,7 +218,30 @@ const Header = ({
           <Text size="2">({selectedNodes.length} selected)</Text>
         )}
       </Flex>
-      <Flex gap="2">
+      <Flex gap="2" wrap="wrap">
+        <Select.Root value={groupFilter} onValueChange={setGroupFilter}>
+          <Select.Trigger
+            variant="surface"
+            aria-label={t("admin.group.filterByGroup", "按分组筛选")}
+          />
+          <Select.Content>
+            <Select.Item value={GROUP_ALL}>
+              {t("admin.group.filterAll", "全部分组")}
+            </Select.Item>
+            {hasUngrouped && (
+              <Select.Item value={GROUP_UNGROUPED}>
+                {t("admin.group.ungrouped", "未分组")}
+              </Select.Item>
+            )}
+            {groups.length > 0 && <Select.Separator />}
+            {groups.map((g) => (
+              <Select.Item key={g} value={g}>
+                {g}
+              </Select.Item>
+            ))}
+          </Select.Content>
+        </Select.Root>
+        <GroupManageButton />
         <TextField.Root
           placeholder={t("admin.nodeTable.searchByName")}
           value={searchTerm}
@@ -202,6 +272,168 @@ const Header = ({
         </Dialog.Root>
       </Flex>
     </Flex>
+  );
+};
+
+// 分组管理：重命名 / 删除分组，批量同步组内所有节点。
+// 分组只是节点上的字符串字段，重命名/删除即对组内每个节点执行 edit。
+const GroupManageButton = () => {
+  const { t } = useTranslation();
+  const { nodeDetail, refresh } = useNodeDetails();
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  const nodes = Array.isArray(nodeDetail) ? nodeDetail : [];
+  const groups = getGroups(nodes);
+  const countOf = (g: string) =>
+    nodes.filter((n) => (n.group || "").trim() === g).length;
+
+  const editGroup = async (group: string, uuids: string[]) => {
+    await Promise.all(
+      uuids.map((uuid) =>
+        fetch(`/api/admin/client/${uuid}/edit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ group }),
+        })
+      )
+    );
+  };
+
+  const handleRename = async (oldName: string) => {
+    const newName = (drafts[oldName] ?? oldName).trim();
+    if (!newName || newName === oldName) return;
+    if (groups.includes(newName)) {
+      toast.error(t("admin.group.exists", "分组已存在"));
+      return;
+    }
+    try {
+      setSaving(true);
+      const uuids = nodes
+        .filter((n) => (n.group || "").trim() === oldName)
+        .map((n) => n.uuid);
+      await editGroup(newName, uuids);
+      setDrafts((p) => {
+        const c = { ...p };
+        delete c[oldName];
+        return c;
+      });
+      toast.success(t("admin.group.renameSuccess", "重命名成功"));
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (name: string) => {
+    try {
+      setSaving(true);
+      const uuids = nodes
+        .filter((n) => (n.group || "").trim() === name)
+        .map((n) => n.uuid);
+      await editGroup("", uuids);
+      setConfirmDelete(null);
+      toast.success(t("admin.group.deleteSuccess", "已删除分组"));
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog.Root
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) {
+          setDrafts({});
+          setConfirmDelete(null);
+        }
+      }}
+    >
+      <Dialog.Trigger>
+        <Button variant="soft">
+          <FolderCog size={16} />
+          {t("admin.group.manage", "分组管理")}
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <Dialog.Title>{t("admin.group.manage", "分组管理")}</Dialog.Title>
+        <Dialog.Description size="2" color="gray" mb="3">
+          {t(
+            "admin.group.manageDescription",
+            "重命名或删除分组将同步更新组内所有服务器。删除分组仅清空其分组标签，不会删除服务器。"
+          )}
+        </Dialog.Description>
+        <Flex direction="column" gap="3">
+          {groups.length === 0 && (
+            <Text size="2" color="gray">
+              {t("admin.group.empty", "暂无分组")}
+            </Text>
+          )}
+          {groups.map((g) => {
+            const draft = drafts[g] ?? g;
+            const changed = draft.trim() !== "" && draft.trim() !== g;
+            return (
+              <Flex key={g} gap="2" align="center">
+                <TextField.Root
+                  style={{ flex: 1 }}
+                  value={draft}
+                  onChange={(e) =>
+                    setDrafts((p) => ({ ...p, [g]: e.target.value }))
+                  }
+                >
+                  <TextField.Slot side="right">
+                    <Text size="1" color="gray">
+                      {countOf(g)}
+                    </Text>
+                  </TextField.Slot>
+                </TextField.Root>
+                <Button
+                  variant="soft"
+                  disabled={saving || !changed}
+                  onClick={() => handleRename(g)}
+                >
+                  {t("admin.group.rename", "重命名")}
+                </Button>
+                {confirmDelete === g ? (
+                  <>
+                    <Button
+                      color="red"
+                      disabled={saving}
+                      onClick={() => handleDelete(g)}
+                    >
+                      {t("admin.nodeTable.confirm", "确认")}
+                    </Button>
+                    <Button
+                      variant="soft"
+                      onClick={() => setConfirmDelete(null)}
+                    >
+                      {t("admin.nodeTable.cancel", "取消")}
+                    </Button>
+                  </>
+                ) : (
+                  <IconButton
+                    color="red"
+                    variant="soft"
+                    title={t("delete", "删除")}
+                    onClick={() => setConfirmDelete(g)}
+                  >
+                    <Trash2Icon size={16} />
+                  </IconButton>
+                )}
+              </Flex>
+            );
+          })}
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 };
 
@@ -1303,22 +1535,27 @@ function GenerateCommandButton({ node, settings }: { node: NodeDetail, settings:
 function EditButton({ node }: { node: NodeDetail }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const { refresh } = useNodeDetails();
+  const { nodeDetail, refresh } = useNodeDetails();
   const nameRef = React.useRef<HTMLInputElement>(null);
-  const groupRef = React.useRef<HTMLInputElement>(null);
   const tagsRef = React.useRef<HTMLInputElement>(null);
   const publicRemarkRef = React.useRef<HTMLTextAreaElement>(null);
   const privateRemarkRef = React.useRef<HTMLTextAreaElement>(null);
   const [hidden, setHidden] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [groupValue, setGroupValue] = useState(node.group || "");
   const [traffic_limit, setTrafficLimit] = useState(0);
   const [traffic_limit_type, setTrafficLimitType] = useState("sum");
 
+  const groupOptions = getGroups(
+    Array.isArray(nodeDetail) ? nodeDetail : []
+  );
+
   React.useEffect(() => {
     setHidden(node.hidden);
+    setGroupValue(node.group || "");
     setTrafficLimit(node.traffic_limit || 0);
     setTrafficLimitType(node.traffic_limit_type || "sum");
-  }, [node.hidden, node.traffic_limit, node.traffic_limit_type]);
+  }, [node.hidden, node.group, node.traffic_limit, node.traffic_limit_type]);
 
   const save = async () => {
     try {
@@ -1329,7 +1566,7 @@ function EditButton({ node }: { node: NodeDetail }) {
           name: nameRef.current?.value,
           remark: privateRemarkRef.current?.value,
           public_remark: publicRemarkRef.current?.value,
-          group: groupRef.current?.value,
+          group: groupValue,
           tags: tagsRef.current?.value,
           hidden,
           traffic_limit,
@@ -1399,7 +1636,16 @@ function EditButton({ node }: { node: NodeDetail }) {
             <label className="block mb-1 text-sm font-medium text-muted-foreground">
               {t("common.group")}
             </label>
-            <TextField.Root defaultValue={node.group} ref={groupRef} />
+            <SelectOrInput
+              options={groupOptions}
+              value={groupValue}
+              onChange={setGroupValue}
+              allowCustomInput
+              placeholder={t(
+                "admin.nodeEdit.groupPlaceholder",
+                "选择已有分组或输入新分组"
+              )}
+            />
           </div>
           <div>
             <label className="block mb-1 text-sm font-medium text-muted-foreground">
