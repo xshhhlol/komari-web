@@ -132,6 +132,11 @@ const Node = React.memo(
                 </IconButton>
               }
             />
+            {online && basic.cn_blocked && (
+              <Badge color="red" variant="solid" title={t("nodeCard.blocked_tip", "对国内参照节点全部超时")}>
+                {t("nodeCard.blocked", "被墙")}
+              </Badge>
+            )}
             <Badge color={online ? "green" : "red"} variant="soft">
               {online ? t("nodeCard.online") : t("nodeCard.offline")}
             </Badge>

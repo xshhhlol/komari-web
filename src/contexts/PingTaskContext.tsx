@@ -7,6 +7,7 @@ export interface PingTask {
   interval?: number;
   target?: string;
   type?: string;
+  block_check?: boolean;
   [property: string]: any;
 }
 

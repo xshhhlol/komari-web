@@ -381,6 +381,8 @@
     "actions": "Actions",
     "arch": "Architecture",
     "basicInfo": "Basic Info",
+    "blocked": "GFW-blocked",
+    "blocked_tip": "Latency to all China reference targets timed out",
     "chart": "Chart",
     "clickToViewPing": "Click to view ping chart",
     "cpu": "CPU",
@@ -457,6 +459,8 @@
   "ping": {
     "all_servers": "All servers",
     "all_servers_description": "When enabled, current and future servers will run this monitor.",
+    "block_check": "China reference target (for GFW-block detection)",
+    "block_check_description": "When enabled, this task is treated as a domestic (China) reference target. If a node's latest latency to ALL such tasks times out, it is flagged as \"GFW-blocked\" on the probe page.",
     "default_on": "Default on for new servers",
     "default_on_description": "When enabled, newly added servers will automatically start running this monitor. Existing servers are unaffected.",
     "default_on_short": "Default on",

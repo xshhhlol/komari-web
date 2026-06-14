@@ -136,6 +136,7 @@ const AddButton: React.FC = () => {
   const [isOpen, setIsOpen] = React.useState(false);
   const [selected, setSelected] = React.useState<string[]>([]);
   const [defaultOn, setDefaultOn] = React.useState(false);
+  const [blockCheck, setBlockCheck] = React.useState(false);
   const { refresh } = usePingTask();
   const [selectedType, setSelectedType] = React.useState<
     "icmp" | "tcp" | "http"
@@ -154,6 +155,7 @@ const AddButton: React.FC = () => {
       default_on: defaultOn,
       clients: selected,
       interval: parseInt(e.currentTarget.interval.value, 10),
+      block_check: blockCheck,
     };
     setSaving(true);
     fetch("/api/admin/ping/add", {
@@ -168,6 +170,7 @@ const AddButton: React.FC = () => {
           setIsOpen(false);
           setSelected([]);
           setDefaultOn(false);
+          setBlockCheck(false);
           setSelectedType("icmp");
           toast.success(t("common.success"));
         } else {
@@ -250,6 +253,19 @@ const AddButton: React.FC = () => {
               type="number"
               placeholder="60"
             />
+            <label className="flex min-h-10 items-center gap-2 text-sm font-normal">
+              <Checkbox
+                checked={blockCheck}
+                onCheckedChange={(checked) => setBlockCheck(!!checked)}
+              />
+              <span>{t("ping.block_check", "国内参照点（用于被墙判定）")}</span>
+            </label>
+            <label className="text-sm font-normal text-gray-500">
+              {t(
+                "ping.block_check_description",
+                "勾选后，此任务视为国内参照目标。当某节点对所有此类任务的最新延迟全部超时，则在探针页标记为“被墙”。"
+              )}
+            </label>
             <div className="flex justify-end gap-2">
               <Dialog.Close>
                 <Button variant="soft">{t("common.close")}</Button>

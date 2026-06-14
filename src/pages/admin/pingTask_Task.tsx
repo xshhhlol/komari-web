@@ -197,6 +197,7 @@ const Row = ({
     clients: task.clients || [],
     default_on: task.default_on || false,
     interval: task.interval || 60,
+    block_check: task.block_check || false,
   });
 
   const submitEdit = (newForm: typeof form) => {
@@ -218,6 +219,7 @@ const Row = ({
             default_on: newForm.default_on,
             clients: newForm.clients,
             interval: newForm.interval,
+            block_check: newForm.block_check,
           },
         ],
       }),
@@ -297,7 +299,19 @@ const Row = ({
           <MenuIcon size={isMobile ? 18 : 16} color={"var(--gray-8)"} />
         </div>
       </TableCell>
-      <TableCell>{task.name}</TableCell>
+      <TableCell>
+        <Flex gap="1" align="center">
+          {task.name}
+          {task.block_check && (
+            <span
+              className="text-xs text-accent-11"
+              title={t("ping.block_check", "国内参照点（用于被墙判定）")}
+            >
+              🧱
+            </span>
+          )}
+        </Flex>
+      </TableCell>
       <TableCell>
         <Flex gap="2" align="center">
           {task.clients && task.clients.length > 0
@@ -409,6 +423,21 @@ const Row = ({
                 }
                 required
               />
+              <label className="flex min-h-10 items-center gap-2 text-sm font-normal">
+                <Checkbox
+                  checked={form.block_check}
+                  onCheckedChange={(checked) =>
+                    setForm((f) => ({ ...f, block_check: !!checked }))
+                  }
+                />
+                <span>{t("ping.block_check", "国内参照点（用于被墙判定）")}</span>
+              </label>
+              <label className="text-sm font-normal text-gray-500">
+                {t(
+                  "ping.block_check_description",
+                  "勾选后，此任务视为国内参照目标。当某节点对所有此类任务的最新延迟全部超时，则在探针页标记为“被墙”。"
+                )}
+              </label>
               <Flex gap="2" justify="end" className="mt-4">
                 <Dialog.Close>
                   <Button

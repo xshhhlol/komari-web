@@ -51,8 +51,10 @@ export type NodeBasicInfo = {
   created_at: string;
   /** 更新时间 */
   updated_at: string;
-  ipv4?: string; 
+  ipv4?: string;
   ipv6?: string;
+  /** 是否被墙：对所有"国内参照点"ping 任务最新结果全部超时（后端计算字段） */
+  cn_blocked?: boolean;
 };
 
 interface NodeListContextType {

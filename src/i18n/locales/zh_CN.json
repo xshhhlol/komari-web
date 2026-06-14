@@ -381,6 +381,8 @@
     "actions": "操作",
     "arch": "架构",
     "basicInfo": "基本信息",
+    "blocked": "被墙",
+    "blocked_tip": "对所有国内参照节点的延迟全部超时",
     "chart": "图表",
     "clickToViewPing": "点击查看延迟图表",
     "cpu": "CPU",
@@ -457,6 +459,8 @@
   "ping": {
     "all_servers": "全部服务器",
     "all_servers_description": "勾选后，当前和后续新增的服务器都会开启该监测。",
+    "block_check": "国内参照点（用于被墙判定）",
+    "block_check_description": "勾选后，此任务视为国内参照目标。当某节点对所有此类任务的最新延迟全部超时，则在探针页标记为“被墙”。",
     "default_on": "默认开启",
     "default_on_description": "开启后，新加入的服务器会自动启用此监测；已存在的服务器不受影响。",
     "default_on_short": "默认开启",
