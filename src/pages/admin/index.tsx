@@ -157,6 +157,7 @@ const Layout = () => {
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
         selectedNodes={selectedNodes}
+        groupFilter={groupFilter}
       />
 
       {(groups.length > 0 || ungroupedCount > 0) && (
@@ -183,10 +184,12 @@ const Header = ({
   searchTerm,
   setSearchTerm,
   selectedNodes,
+  groupFilter,
 }: {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   selectedNodes: string[];
+  groupFilter: string;
 }) => {
   const { t } = useTranslation();
   const { refresh } = useNodeDetails();
@@ -197,11 +200,23 @@ const Header = ({
     setDialogOpen(true);
     setLoading(true);
     try {
-      await fetch("/api/admin/client/add", {
+      const res = await fetch("/api/admin/client/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name || "" }),
       });
+      // 若当前正筛选某个具体分组，新建节点自动归入该分组；"全部"/"未分组" 不设置该字段
+      if (groupFilter !== GROUP_ALL && groupFilter !== GROUP_UNGROUPED) {
+        const data = await res.json().catch(() => null);
+        const uuid: string | undefined = data?.uuid;
+        if (uuid) {
+          await fetch(`/api/admin/client/${uuid}/edit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ group: groupFilter }),
+          });
+        }
+      }
       refresh();
     } catch (error) {
       toast.error(
