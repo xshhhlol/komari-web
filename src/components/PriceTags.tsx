@@ -23,7 +23,7 @@ const PriceTags = ({
 
   if (price == 0) {
     return (
-      <Flex gap="1" {...props} wrap="wrap">
+      <Flex gap="2" {...props} wrap="wrap">
         <CustomTags tags={tags} />
       </Flex>
     );
@@ -180,6 +180,26 @@ const CustomTags = ({ tags }: { tags?: string }) => {
     "sky",
   ];
 
+  // 自动配色轮换：挑选明快、区分度高的颜色（排除灰/棕等暗沉色），让标签更好看
+  const cycleColors = [
+    "iris",
+    "jade",
+    "blue",
+    "amber",
+    "tomato",
+    "cyan",
+    "plum",
+    "grass",
+    "orange",
+    "pink",
+    "teal",
+    "violet",
+    "sky",
+    "crimson",
+    "green",
+    "indigo",
+  ] as const;
+
   // 解析带颜色的标签
   const parseTagWithColor = (tag: string) => {
     const colorMatch = tag.match(/<(\w+)>$/);
@@ -198,16 +218,18 @@ const CustomTags = ({ tags }: { tags?: string }) => {
     <>
       {tagList.map((tag, index) => {
         const { text, color } = parseTagWithColor(tag);
-        const badgeColor = color || colors[index % colors.length];
+        const badgeColor = color || cycleColors[index % cycleColors.length];
 
         return (
           <Badge
             key={index}
             color={badgeColor}
             variant="soft"
-            className="text-sm"
+            radius="full"
+            size="1"
+            className="font-medium tracking-tight"
           >
-            <label className="text-xs">{text}</label>
+            {text}
           </Badge>
         );
       })}
