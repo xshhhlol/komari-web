@@ -208,28 +208,83 @@ const Header = ({
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
+  // SSH 自动安装（可选）：填了 IP+密码就在添加后自动连上去装 agent
+  const [sshHost, setSshHost] = useState("");
+  const [sshPassword, setSshPassword] = useState("");
+  const [installing, setInstalling] = useState(false);
+  const [installResult, setInstallResult] = useState<{
+    success?: boolean;
+    log?: string;
+    error?: string;
+  } | null>(null);
+
+  const resetAddDialog = () => {
+    setInstallResult(null);
+    setSshHost("");
+    setSshPassword("");
+  };
+
   const handleAddNode = async (name: string | undefined) => {
-    setDialogOpen(true);
     setLoading(true);
+    setInstallResult(null);
     try {
       const res = await fetch("/api/admin/client/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name || "" }),
       });
+      const data = await res.json().catch(() => null);
+      const uuid: string | undefined = data?.uuid;
       // 若当前正筛选某个具体分组，新建节点自动归入该分组；"全部"/"未分组" 不设置该字段
-      if (groupFilter !== GROUP_ALL && groupFilter !== GROUP_UNGROUPED) {
-        const data = await res.json().catch(() => null);
-        const uuid: string | undefined = data?.uuid;
-        if (uuid) {
-          await fetch(`/api/admin/client/${uuid}/edit`, {
+      if (uuid && groupFilter !== GROUP_ALL && groupFilter !== GROUP_UNGROUPED) {
+        await fetch(`/api/admin/client/${uuid}/edit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ group: groupFilter }),
+        });
+      }
+
+      const host = sshHost.trim();
+      const wantInstall = !!uuid && host !== "" && sshPassword !== "";
+      if (wantInstall) {
+        setInstalling(true);
+        try {
+          const r = await fetch(`/api/admin/client/${uuid}/install-ssh`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ group: groupFilter }),
+            body: JSON.stringify({
+              host,
+              password: sshPassword,
+              endpoint: window.location.origin,
+            }),
           });
+          const result = await r.json().catch(() => null);
+          if (result && (result.success || result.log || result.error)) {
+            setInstallResult({
+              success: !!result.success,
+              log: result.log,
+              error: result.error,
+            });
+          } else {
+            setInstallResult({
+              success: false,
+              error: t("common.error", "Error"),
+            });
+          }
+          if (result?.success) {
+            toast.success(t("admin.nodeTable.installSuccess", "安装成功"));
+          } else {
+            toast.error(t("admin.nodeTable.installFailed", "安装失败"));
+          }
+        } finally {
+          setInstalling(false);
         }
+        refresh();
+        // 保留弹窗，展示安装日志，让用户查看结果
+      } else {
+        refresh();
+        setDialogOpen(false);
       }
-      refresh();
     } catch (error) {
       toast.error(
         `${t("common.error", "Error")}: ${
@@ -238,7 +293,6 @@ const Header = ({
       );
     } finally {
       setLoading(false);
-      setDialogOpen(false);
     }
   };
   return (
@@ -258,7 +312,13 @@ const Header = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog.Root
+          open={dialogOpen}
+          onOpenChange={(o) => {
+            setDialogOpen(o);
+            if (!o) resetAddDialog();
+          }}
+        >
           <Dialog.Trigger>
             <Button onClick={() => setDialogOpen(true)}>
               <Plus size={16} />
@@ -267,16 +327,59 @@ const Header = ({
           </Dialog.Trigger>
           <Dialog.Content>
             <Dialog.Title>{t("admin.nodeTable.addNode")}</Dialog.Title>
-            <TextField.Root
-              ref={inputRef}
-              placeholder={t("admin.nodeTable.nameOptional")}
-            />
+            <Flex direction="column" gap="3" mt="2">
+              <TextField.Root
+                ref={inputRef}
+                placeholder={t("admin.nodeTable.nameOptional")}
+              />
+              {/* SSH 自动安装（可选，仅 Linux + root 密码） */}
+              <div className="rounded-md border border-dashed border-accent-6 p-3">
+                <Text size="1" color="gray" className="block mb-2">
+                  {t(
+                    "admin.nodeTable.sshInstallHint",
+                    "（可选）填写服务器 IP 与 root 密码，添加后自动 SSH 连接并安装（仅 Linux）"
+                  )}
+                </Text>
+                <Flex direction="column" gap="2">
+                  <TextField.Root
+                    value={sshHost}
+                    onChange={(e) => setSshHost(e.target.value)}
+                    placeholder={t("admin.nodeTable.sshHost", "服务器 IP / 域名")}
+                  />
+                  <TextField.Root
+                    type="password"
+                    value={sshPassword}
+                    onChange={(e) => setSshPassword(e.target.value)}
+                    placeholder={t("admin.nodeTable.sshPassword", "root 密码")}
+                  />
+                </Flex>
+              </div>
+              {installResult && (
+                <div>
+                  <Text
+                    size="1"
+                    weight="bold"
+                    color={installResult.success ? "green" : "red"}
+                  >
+                    {installResult.success
+                      ? t("admin.nodeTable.installSuccess", "安装成功")
+                      : t("admin.nodeTable.installFailed", "安装失败")}
+                  </Text>
+                  <pre className="mt-1 max-h-64 overflow-auto rounded-md bg-accent-2 p-2 text-xs whitespace-pre-wrap break-all">
+                    {installResult.log || installResult.error || ""}
+                  </pre>
+                </div>
+              )}
+            </Flex>
             <Flex justify="end" gap="2" mt="4">
               <Button
                 onClick={() => handleAddNode(inputRef.current?.value)}
-                disabled={loading}
+                disabled={loading || installing}
+                loading={installing}
               >
-                {t("admin.nodeTable.addNode")}
+                {installing
+                  ? t("admin.nodeTable.installing", "安装中…")
+                  : t("admin.nodeTable.addNode")}
               </Button>
             </Flex>
           </Dialog.Content>
