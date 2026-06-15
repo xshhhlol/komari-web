@@ -345,6 +345,8 @@
     },
     "execute": "执行命令",
     "executing": "执行中...",
+    "timeout": "超时",
+    "timeoutUnit": "秒，0=不限",
     "pollingTimeout": "任务执行超时",
     "results": "执行结果",
     "selectedNodes": "已选择节点",

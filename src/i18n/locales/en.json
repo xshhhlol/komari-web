@@ -345,6 +345,8 @@
     },
     "execute": "Remote Exec",
     "executing": "Executing",
+    "timeout": "Timeout",
+    "timeoutUnit": "s, 0 = no limit",
     "pollingTimeout": "Task execution timed out",
     "results": "Execute result",
     "selectedNodes": "Selected node",

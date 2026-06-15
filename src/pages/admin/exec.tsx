@@ -70,6 +70,7 @@ const ExecContent = () => {
     const { t } = useTranslation();
     const { nodeDetail, isLoading, error } = useNodeDetails();
     const [command, setCommand] = useState("");
+    const [timeoutSec, setTimeoutSec] = useState("60"); // 单条命令超时秒数，0=用 agent 默认/不限
     const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
     const [executing, setExecuting] = useState(false);
     const [results, setResults] = useState<TaskResult[]>([]);
@@ -243,7 +244,7 @@ const ExecContent = () => {
             );
             clearPolling();
             toast.warning(t("exec.pollingTimeout", "任务执行超时"));
-        }, 180000);
+        }, Math.max(180000, (parseInt(timeoutSec, 10) || 0) * 1000 + 30000));
     };
 
     const executeCommand = async () => {
@@ -279,6 +280,7 @@ const ExecContent = () => {
                     // Remote exec treats whitespace as script content, so preserve the user's exact input.
                     command,
                     clients: selectedNodes,
+                    timeout: Math.max(0, parseInt(timeoutSec, 10) || 0),
                     "2fa_code": twoFaCode,
                 }),
             });
@@ -427,7 +429,23 @@ const ExecContent = () => {
                         )}
                     </div>
 
-                    <Flex justify="end" gap="2">
+                    <Flex justify="end" gap="2" align="center">
+                        <Flex align="center" gap="2" className="mr-auto">
+                            <Text size="2" color="gray">
+                                {t("exec.timeout", "超时")}
+                            </Text>
+                            <TextField.Root
+                                className="w-20"
+                                type="number"
+                                min="0"
+                                placeholder="60"
+                                value={timeoutSec}
+                                onChange={(e) => setTimeoutSec((e.target as HTMLInputElement).value)}
+                            />
+                            <Text size="1" color="gray">
+                                {t("exec.timeoutUnit", "秒，0=不限")}
+                            </Text>
+                        </Flex>
                         {twoFaEnabled ? (
                             <TextField.Root
                                 className="w-32"
