@@ -229,7 +229,9 @@ const ExecContent = () => {
             pollTaskResult(taskId);
         }, 2000);
 
-        // 60秒后停止轮询并设置为超时状态
+        // 轮询安全上限：agent 端已对单条命令加了超时（默认 60s，会终止永不退出的命令
+        // 并回传结果），这里取更长的兜底时间，确保那条「超时被终止」的结果能被取回展示，
+        // 不会在 agent 回传前就被前端误判为超时。只有 agent 始终不回包（离线）才会触发。
         pollingTimeoutRef.current = setTimeout(() => {
             // 将未完成的任务状态设置为超时
             setResults(prevResults =>
@@ -241,7 +243,7 @@ const ExecContent = () => {
             );
             clearPolling();
             toast.warning(t("exec.pollingTimeout", "任务执行超时"));
-        }, 60000);
+        }, 180000);
     };
 
     const executeCommand = async () => {
