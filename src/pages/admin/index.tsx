@@ -212,21 +212,14 @@ const Header = ({
   const [sshHost, setSshHost] = useState("");
   const [sshPassword, setSshPassword] = useState("");
   const [installing, setInstalling] = useState(false);
-  const [installResult, setInstallResult] = useState<{
-    success?: boolean;
-    log?: string;
-    error?: string;
-  } | null>(null);
 
   const resetAddDialog = () => {
-    setInstallResult(null);
     setSshHost("");
     setSshPassword("");
   };
 
   const handleAddNode = async (name: string | undefined) => {
     setLoading(true);
-    setInstallResult(null);
     try {
       const res = await fetch("/api/admin/client/add", {
         method: "POST",
@@ -248,6 +241,8 @@ const Header = ({
       const wantInstall = !!uuid && host !== "" && sshPassword !== "";
       if (wantInstall) {
         setInstalling(true);
+        let ok = false;
+        let errMsg = "";
         try {
           const r = await fetch(`/api/admin/client/${uuid}/install-ssh`, {
             method: "POST",
@@ -259,28 +254,23 @@ const Header = ({
             }),
           });
           const result = await r.json().catch(() => null);
-          if (result && (result.success || result.log || result.error)) {
-            setInstallResult({
-              success: !!result.success,
-              log: result.log,
-              error: result.error,
-            });
-          } else {
-            setInstallResult({
-              success: false,
-              error: t("common.error", "Error"),
-            });
-          }
-          if (result?.success) {
-            toast.success(t("admin.nodeTable.installSuccess", "安装成功"));
-          } else {
-            toast.error(t("admin.nodeTable.installFailed", "安装失败"));
-          }
+          ok = !!result?.success;
+          errMsg = (result?.error as string) || "";
         } finally {
           setInstalling(false);
         }
         refresh();
-        // 保留弹窗，展示安装日志，让用户查看结果
+        // 关闭弹窗，避免结果停留在添加页误导重复添加；成败用 toast 提醒
+        setDialogOpen(false);
+        if (ok) {
+          toast.success(t("admin.nodeTable.installSuccess", "安装成功"));
+        } else {
+          toast.error(
+            errMsg
+              ? `${t("admin.nodeTable.installFailed", "安装失败")}: ${errMsg}`
+              : t("admin.nodeTable.installFailed", "安装失败")
+          );
+        }
       } else {
         refresh();
         setDialogOpen(false);
@@ -354,22 +344,6 @@ const Header = ({
                   />
                 </Flex>
               </div>
-              {installResult && (
-                <div>
-                  <Text
-                    size="1"
-                    weight="bold"
-                    color={installResult.success ? "green" : "red"}
-                  >
-                    {installResult.success
-                      ? t("admin.nodeTable.installSuccess", "安装成功")
-                      : t("admin.nodeTable.installFailed", "安装失败")}
-                  </Text>
-                  <pre className="mt-1 max-h-64 overflow-auto rounded-md bg-accent-2 p-2 text-xs whitespace-pre-wrap break-all">
-                    {installResult.log || installResult.error || ""}
-                  </pre>
-                </div>
-              )}
             </Flex>
             <Flex justify="end" gap="2" mt="4">
               <Button
