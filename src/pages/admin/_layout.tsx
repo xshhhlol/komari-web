@@ -60,9 +60,13 @@ const AdminLayout = () => {
         </Dialog.Content>
       </Dialog.Root>
       <AccountProvider>
-        <AdminGate>
-          <AdminPanelBar content={<Outlet />} />
-        </AdminGate>
+        <AdminPanelBar
+          content={
+            <AdminGate>
+              <Outlet />
+            </AdminGate>
+          }
+        />
       </AccountProvider>
     </>
   );
