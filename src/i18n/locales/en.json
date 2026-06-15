@@ -86,6 +86,8 @@
       "publicRemarkPlaceholder": "Please enter public notes",
       "remark": "Private Notes",
       "remarkPlaceholder": "Please enter private notes",
+      "tagsPlaceholder": "Select existing tags or type a new one",
+      "tagsCreate": "Create \"{tag}\"",
       "save": "save",
       "saveError": "Save Failed",
       "saveSuccess": "Save Successful",

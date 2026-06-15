@@ -86,6 +86,8 @@
       "publicRemarkPlaceholder": "公開メモを入力してください",
       "remark": "プライベートメモ",
       "remarkPlaceholder": "プライベートメモを入力してください",
+      "tagsPlaceholder": "既存のタグを選択するか新規入力",
+      "tagsCreate": "「{tag}」を作成",
       "save": "保存",
       "saveError": "保存失敗",
       "saveSuccess": "保存成功",

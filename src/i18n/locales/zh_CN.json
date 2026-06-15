@@ -86,6 +86,8 @@
       "publicRemarkPlaceholder": "请输入公开备注",
       "remark": "私有备注",
       "remarkPlaceholder": "请输入私有备注",
+      "tagsPlaceholder": "选择已有标签或输入新标签",
+      "tagsCreate": "新建 \"{tag}\"",
       "save": "保存",
       "saveError": "保存失败",
       "saveSuccess": "保存成功",

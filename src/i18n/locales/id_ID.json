@@ -86,6 +86,8 @@
       "publicRemarkPlaceholder": "Masukkan catatan publik",
       "remark": "Catatan Pribadi",
       "remarkPlaceholder": "Masukkan catatan pribadi",
+      "tagsPlaceholder": "Pilih tag yang ada atau ketik baru",
+      "tagsCreate": "Buat \"{tag}\"",
       "save": "Simpan",
       "saveError": "Gagal menyimpan data",
       "saveSuccess": "Data berhasil disimpan",

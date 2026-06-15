@@ -80,6 +80,7 @@ import {
 } from "@/components/admin/SettingCard";
 import { useSettings } from "@/lib/api";
 import { SelectOrInput } from "@/components/ui/select-or-input";
+import { TagsMultiSelect } from "@/components/ui/tags-multi-select";
 
 // 分组过滤的特殊取值（"" 不能作为 Radix Select 的 value）
 const GROUP_ALL = "__all__";
@@ -89,6 +90,17 @@ const GROUP_UNGROUPED = "__ungrouped__";
 const getGroups = (nodes: NodeDetail[]): string[] =>
   Array.from(
     new Set(nodes.map((n) => (n.group || "").trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b));
+
+// 从节点列表中提取去重、排序后的标签（原始 ";" 分隔，保留 <color>）
+const getTags = (nodes: NodeDetail[]): string[] =>
+  Array.from(
+    new Set(
+      nodes
+        .flatMap((n) => (n.tags || "").split(";"))
+        .map((t) => t.trim())
+        .filter(Boolean)
+    )
   ).sort((a, b) => a.localeCompare(b));
 
 const NodeDetailsPage = () => {
@@ -1605,25 +1617,33 @@ function EditButton({ node }: { node: NodeDetail }) {
   const [open, setOpen] = useState(false);
   const { nodeDetail, refresh } = useNodeDetails();
   const nameRef = React.useRef<HTMLInputElement>(null);
-  const tagsRef = React.useRef<HTMLInputElement>(null);
   const publicRemarkRef = React.useRef<HTMLTextAreaElement>(null);
   const privateRemarkRef = React.useRef<HTMLTextAreaElement>(null);
   const [hidden, setHidden] = useState(false);
   const [saving, setSaving] = useState(false);
   const [groupValue, setGroupValue] = useState(node.group || "");
+  const [tagsValue, setTagsValue] = useState(node.tags || "");
   const [traffic_limit, setTrafficLimit] = useState(0);
   const [traffic_limit_type, setTrafficLimitType] = useState("sum");
 
   const groupOptions = getGroups(
     Array.isArray(nodeDetail) ? nodeDetail : []
   );
+  const tagOptions = getTags(Array.isArray(nodeDetail) ? nodeDetail : []);
 
   React.useEffect(() => {
     setHidden(node.hidden);
     setGroupValue(node.group || "");
+    setTagsValue(node.tags || "");
     setTrafficLimit(node.traffic_limit || 0);
     setTrafficLimitType(node.traffic_limit_type || "sum");
-  }, [node.hidden, node.group, node.traffic_limit, node.traffic_limit_type]);
+  }, [
+    node.hidden,
+    node.group,
+    node.tags,
+    node.traffic_limit,
+    node.traffic_limit_type,
+  ]);
 
   const save = async () => {
     try {
@@ -1635,7 +1655,7 @@ function EditButton({ node }: { node: NodeDetail }) {
           remark: privateRemarkRef.current?.value,
           public_remark: publicRemarkRef.current?.value,
           group: groupValue,
-          tags: tagsRef.current?.value,
+          tags: tagsValue,
           hidden,
           traffic_limit,
           traffic_limit_type,
@@ -1698,7 +1718,16 @@ function EditButton({ node }: { node: NodeDetail }) {
                 />
               </Tips>
             </label>
-            <TextField.Root defaultValue={node.tags} ref={tagsRef} />
+            <TagsMultiSelect
+              value={tagsValue}
+              onChange={setTagsValue}
+              options={tagOptions}
+              placeholder={t(
+                "admin.nodeEdit.tagsPlaceholder",
+                "选择已有标签或输入新标签"
+              )}
+              createLabel={t("admin.nodeEdit.tagsCreate", '新建 "{tag}"')}
+            />
           </div>
           <div>
             <label className="block mb-1 text-sm font-medium text-muted-foreground">
