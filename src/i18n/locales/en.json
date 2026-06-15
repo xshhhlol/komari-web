@@ -114,6 +114,7 @@
       "cancel": "Cancel",
       "cannotUndo": "This operation will not be restored!",
       "clientVersion": "Client version",
+      "version": "Version",
       "confirm": "confirm",
       "confirmDelete": "Confirm deletion",
       "currency": "Currency",

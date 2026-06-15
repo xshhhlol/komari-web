@@ -633,13 +633,8 @@ const SortableRow = ({
         </Text>
       </TableCell>
       <TableCell>
-        <PriceTags
-          price={node.price}
-          billing_cycle={node.billing_cycle}
-          expired_at={node.expired_at}
-          currency={node.currency}
-          tags={node.tags || ""}
-        />
+        {/* 标签列：price=0 时 PriceTags 仅渲染标签，不显示账单/到期徽章 */}
+        <PriceTags price={0} tags={node.tags || ""} />
       </TableCell>
       <TableCell>
         <ActionButtons node={node} settings={settings} />
@@ -768,10 +763,10 @@ const NodeTable = ({
               </TableHead>
               <TableHead>{t("admin.nodeTable.name")}</TableHead>
               <TableHead>{t("admin.nodeTable.ipAddress")}</TableHead>
-              <TableHead>{t("admin.nodeTable.clientVersion")}</TableHead>
+              <TableHead>{t("admin.nodeTable.version")}</TableHead>
               <TableHead>{t("common.group")}</TableHead>
               <TableHead>{t("admin.nodeEdit.publicRemark")}</TableHead>
-              <TableHead>{t("admin.nodeTable.billing")}</TableHead>
+              <TableHead>{t("common.tags")}</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
@@ -1744,7 +1739,8 @@ function EditButton({ node }: { node: NodeDetail }) {
               )}
             />
           </div>
-          <div>
+          {/* 私有备注暂时隐藏（保留字段与数据，仅界面不展示，保存时按原值回写） */}
+          <div className="hidden">
             <label className="block mb-1 text-sm font-medium text-muted-foreground">
               {t("admin.nodeEdit.remark", "私有备注")}
             </label>

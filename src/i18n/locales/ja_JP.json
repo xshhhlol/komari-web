@@ -113,6 +113,7 @@
       "cancel": "キャンセル",
       "cannotUndo": "この操作は元に戻せません！",
       "clientVersion": "クライアントバージョン",
+      "version": "バージョン",
       "confirm": "確認",
       "confirmDelete": "削除を確認",
       "currency": "通貨",
