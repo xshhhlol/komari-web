@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 
 import AdminPanelBar from "../../components/admin/AdminPanelBar";
+import AdminGate from "../../components/admin/AdminGate";
 import { AccountProvider } from "@/contexts/AccountContext";
 import { updateSettingsWithToast, useSettings } from "@/lib/api";
 import { Button, Dialog } from "@radix-ui/themes";
@@ -59,7 +60,9 @@ const AdminLayout = () => {
         </Dialog.Content>
       </Dialog.Root>
       <AccountProvider>
-        <AdminPanelBar content={<Outlet />} />
+        <AdminGate>
+          <AdminPanelBar content={<Outlet />} />
+        </AdminGate>
       </AccountProvider>
     </>
   );
