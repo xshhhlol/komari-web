@@ -607,7 +607,7 @@ const SortableRow = ({
       <TableCell>
         <Text
           size="2"
-          title={node.remark}
+          title={node.public_remark}
           style={{
             maxWidth: "150px",
             overflow: "hidden",
@@ -615,9 +615,9 @@ const SortableRow = ({
             whiteSpace: "nowrap",
           }}
         >
-          {node.remark && node.remark.length > 10
-            ? `${node.remark.slice(0, 10)}...`
-            : node.remark}
+          {node.public_remark && node.public_remark.length > 10
+            ? `${node.public_remark.slice(0, 10)}...`
+            : node.public_remark}
         </Text>
       </TableCell>
       <TableCell>
@@ -758,7 +758,7 @@ const NodeTable = ({
               <TableHead>{t("admin.nodeTable.ipAddress")}</TableHead>
               <TableHead>{t("admin.nodeTable.clientVersion")}</TableHead>
               <TableHead>{t("common.group")}</TableHead>
-              <TableHead>{t("admin.nodeEdit.remark")}</TableHead>
+              <TableHead>{t("admin.nodeEdit.publicRemark")}</TableHead>
               <TableHead>{t("admin.nodeTable.billing")}</TableHead>
               <TableHead></TableHead>
             </TableRow>
