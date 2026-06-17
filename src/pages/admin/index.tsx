@@ -19,6 +19,7 @@ import {
   IconButton,
   TextArea,
   SegmentedControl,
+  Spinner,
 } from "@radix-ui/themes";
 import {
   CircleDollarSign,
@@ -349,11 +350,17 @@ const Header = ({
               <Button
                 onClick={() => handleAddNode(inputRef.current?.value)}
                 disabled={loading || installing}
-                loading={installing}
               >
-                {installing
-                  ? t("admin.nodeTable.installing", "安装中…")
-                  : t("admin.nodeTable.addNode")}
+                {loading || installing ? (
+                  <>
+                    <Spinner size="2" />
+                    {installing
+                      ? t("admin.nodeTable.installing", "安装中…")
+                      : t("admin.nodeTable.addNode")}
+                  </>
+                ) : (
+                  t("admin.nodeTable.addNode")
+                )}
               </Button>
             </Flex>
           </Dialog.Content>
