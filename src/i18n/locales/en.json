@@ -191,6 +191,13 @@
       "filterAll": "All groups",
       "ungrouped": "Ungrouped",
       "filterByGroup": "Filter by group"
+    },
+    "tag": {
+      "manage": "Manage Tags",
+      "manageDescription": "Drag to reorder tags. The order applies to the tag filter on the public dashboard and the tag picker in the admin panel.",
+      "save": "Save order",
+      "saveSuccess": "Tag order saved",
+      "empty": "No tags yet"
     }
   },
   "cancel": "Cancel",

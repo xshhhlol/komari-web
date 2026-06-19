@@ -26,6 +26,7 @@ import {
   Copy,
   Download,
   FolderCog,
+  ListOrdered,
   MenuIcon,
   Pencil,
   Plus,
@@ -79,7 +80,8 @@ import {
   SettingCardShortTextInput,
   SettingCardSwitch,
 } from "@/components/admin/SettingCard";
-import { useSettings } from "@/lib/api";
+import { useSettings, updateSettings } from "@/lib/api";
+import { usePublicInfo } from "@/contexts/PublicInfoContext";
 import { SelectOrInput } from "@/components/ui/select-or-input";
 import { TagsMultiSelect } from "@/components/ui/tags-multi-select";
 
@@ -103,6 +105,31 @@ const getTags = (nodes: NodeDetail[]): string[] =>
         .filter(Boolean)
     )
   ).sort((a, b) => a.localeCompare(b));
+
+// 去掉标签末尾的 <color> 颜色标记，作为跨端一致的排序键
+// （后台 getTags 保留 <color>，公开主题解析后去掉，归一化后两端才能对上）
+const stripTagColor = (tag: string) => tag.replace(/<\w+>$/, "").trim();
+
+// 解析全局标签顺序设置（";" 分隔）。
+const parseTagOrder = (tagOrder?: string): string[] =>
+  (tagOrder || "")
+    .split(";")
+    .map((t) => t.trim())
+    .filter(Boolean);
+
+// 把标签按全局顺序排列：已在顺序表中的按其位置，未列出的（如新标签）按字母序追加在后。
+const orderTags = (tags: string[], tagOrder?: string): string[] => {
+  const order = parseTagOrder(tagOrder);
+  const rank = new Map(order.map((t, i) => [stripTagColor(t), i]));
+  const rankOf = (t: string) =>
+    rank.has(stripTagColor(t)) ? rank.get(stripTagColor(t))! : Number.POSITIVE_INFINITY;
+  return [...tags].sort((a, b) => {
+    const ra = rankOf(a);
+    const rb = rankOf(b);
+    if (ra !== rb) return ra - rb;
+    return a.localeCompare(b);
+  });
+};
 
 const NodeDetailsPage = () => {
   return (
@@ -298,7 +325,9 @@ const Header = ({
       </Flex>
       <Flex gap="2" wrap="wrap">
         <GroupManageButton />
+        <TagManageButton />
         <TextField.Root
+          radius="full"
           placeholder={t("admin.nodeTable.searchByName")}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -311,7 +340,7 @@ const Header = ({
           }}
         >
           <Dialog.Trigger>
-            <Button onClick={() => setDialogOpen(true)}>
+            <Button radius="full" onClick={() => setDialogOpen(true)}>
               <Plus size={16} />
               {t("admin.nodeTable.addNode")}
             </Button>
@@ -516,7 +545,7 @@ const GroupManageButton = () => {
       }}
     >
       <Dialog.Trigger>
-        <Button variant="soft">
+        <Button variant="soft" radius="full">
           <FolderCog size={16} />
           {t("admin.group.manage", "分组管理")}
         </Button>
@@ -589,6 +618,142 @@ const GroupManageButton = () => {
               </Flex>
             );
           })}
+        </Flex>
+      </Dialog.Content>
+    </Dialog.Root>
+  );
+};
+
+// 标签管理：拖拽调整标签的全局显示顺序，保存到后端（tag_order 设置）。
+// 标签本身只是节点上的字符串，这里只调整“显示顺序”，公开主页与后台标签选择器都按此排序。
+const SortableTagChip = ({ tag }: { tag: string }) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: tag });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+  return (
+    <Flex
+      ref={setNodeRef}
+      style={style}
+      align="center"
+      gap="2"
+      className="rounded-full border border-accent-6 bg-accent-2 px-3 py-1.5 cursor-move select-none"
+      {...attributes}
+      {...listeners}
+    >
+      <MenuIcon size={14} color="var(--gray-8)" />
+      <Text size="2">{stripTagColor(tag)}</Text>
+    </Flex>
+  );
+};
+
+const TagManageButton = () => {
+  const { t } = useTranslation();
+  const { nodeDetail } = useNodeDetails();
+  const { publicInfo, refresh: refreshPublic } = usePublicInfo();
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [order, setOrder] = useState<string[]>([]);
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  const allTags = React.useMemo(
+    () => getTags(Array.isArray(nodeDetail) ? nodeDetail : []),
+    [nodeDetail]
+  );
+
+  // 打开时按当前已保存顺序初始化（新标签按字母序排在后面）
+  const initOrder = () => setOrder(orderTags(allTags, publicInfo?.tag_order));
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setOrder((prev) => {
+      const from = prev.indexOf(active.id as string);
+      const to = prev.indexOf(over.id as string);
+      if (from === -1 || to === -1) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      await updateSettings({ tag_order: order.join(";") });
+      refreshPublic();
+      toast.success(t("admin.tag.saveSuccess", "标签顺序已保存"));
+      setOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog.Root
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (o) initOrder();
+      }}
+    >
+      <Dialog.Trigger>
+        <Button variant="soft" radius="full">
+          <ListOrdered size={16} />
+          {t("admin.tag.manage", "标签管理")}
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Content>
+        <Dialog.Title>{t("admin.tag.manage", "标签管理")}</Dialog.Title>
+        <Dialog.Description size="2" color="gray" mb="3">
+          {t(
+            "admin.tag.manageDescription",
+            "拖拽调整标签的显示顺序，公开主页的标签筛选与后台的标签选择都会按此顺序排列。"
+          )}
+        </Dialog.Description>
+        {order.length === 0 ? (
+          <Text size="2" color="gray">
+            {t("admin.tag.empty", "暂无标签")}
+          </Text>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={order} strategy={verticalListSortingStrategy}>
+              <Flex wrap="wrap" gap="2">
+                {order.map((tag) => (
+                  <SortableTagChip key={tag} tag={tag} />
+                ))}
+              </Flex>
+            </SortableContext>
+          </DndContext>
+        )}
+        <Flex justify="end" gap="2" mt="4">
+          <Dialog.Close>
+            <Button variant="soft" color="gray" radius="full">
+              {t("admin.nodeTable.cancel", "取消")}
+            </Button>
+          </Dialog.Close>
+          <Button
+            radius="full"
+            disabled={saving || order.length === 0}
+            onClick={handleSave}
+          >
+            {saving ? <Spinner size="2" /> : t("admin.tag.save", "保存顺序")}
+          </Button>
         </Flex>
       </Dialog.Content>
     </Dialog.Root>
@@ -1695,6 +1860,7 @@ function EditButton({ node }: { node: NodeDetail }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { nodeDetail, refresh } = useNodeDetails();
+  const { publicInfo } = usePublicInfo();
   const nameRef = React.useRef<HTMLInputElement>(null);
   const publicRemarkRef = React.useRef<HTMLTextAreaElement>(null);
   const privateRemarkRef = React.useRef<HTMLTextAreaElement>(null);
@@ -1708,7 +1874,10 @@ function EditButton({ node }: { node: NodeDetail }) {
   const groupOptions = getGroups(
     Array.isArray(nodeDetail) ? nodeDetail : []
   );
-  const tagOptions = getTags(Array.isArray(nodeDetail) ? nodeDetail : []);
+  const tagOptions = orderTags(
+    getTags(Array.isArray(nodeDetail) ? nodeDetail : []),
+    publicInfo?.tag_order
+  );
 
   React.useEffect(() => {
     setHidden(node.hidden);

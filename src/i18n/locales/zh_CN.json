@@ -191,6 +191,13 @@
       "filterAll": "全部分组",
       "ungrouped": "未分组",
       "filterByGroup": "按分组筛选"
+    },
+    "tag": {
+      "manage": "标签管理",
+      "manageDescription": "拖拽调整标签的显示顺序，公开主页的标签筛选与后台的标签选择都会按此顺序排列。",
+      "save": "保存顺序",
+      "saveSuccess": "标签顺序已保存",
+      "empty": "暂无标签"
     }
   },
   "cancel": "取消",
