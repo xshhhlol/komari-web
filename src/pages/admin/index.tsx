@@ -36,6 +36,7 @@ import {
 import { useTranslation } from "react-i18next";
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   useSensor,
   useSensors,
@@ -46,6 +47,8 @@ import {
 import {
   SortableContext,
   useSortable,
+  arrayMove,
+  rectSortingStrategy,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -626,27 +629,42 @@ const GroupManageButton = () => {
 
 // 标签管理：拖拽调整标签的全局显示顺序，保存到后端（tag_order 设置）。
 // 标签本身只是节点上的字符串，这里只调整“显示顺序”，公开主页与后台标签选择器都按此排序。
+// 标签胶囊的纯展示部分，拖拽中的 DragOverlay 复用同一外观。
+const TagChipBase = React.forwardRef<
+  HTMLDivElement,
+  { tag: string; dragging?: boolean; overlay?: boolean } & React.HTMLAttributes<HTMLDivElement>
+>(({ tag, dragging, overlay, style, ...rest }, ref) => (
+  <Flex
+    ref={ref}
+    style={style}
+    align="center"
+    gap="2"
+    className={`rounded-full border border-accent-6 bg-accent-2 px-3 py-1.5 cursor-grab active:cursor-grabbing select-none touch-none ${
+      overlay ? "cursor-grabbing shadow-lg" : ""
+    } ${dragging && !overlay ? "opacity-30" : ""}`}
+    {...rest}
+  >
+    <MenuIcon size={14} color="var(--gray-8)" />
+    <Text size="2">{stripTagColor(tag)}</Text>
+  </Flex>
+));
+
 const SortableTagChip = ({ tag }: { tag: string }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: tag });
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.6 : 1,
   };
   return (
-    <Flex
+    <TagChipBase
       ref={setNodeRef}
+      tag={tag}
+      dragging={isDragging}
       style={style}
-      align="center"
-      gap="2"
-      className="rounded-full border border-accent-6 bg-accent-2 px-3 py-1.5 cursor-move select-none"
       {...attributes}
       {...listeners}
-    >
-      <MenuIcon size={14} color="var(--gray-8)" />
-      <Text size="2">{stripTagColor(tag)}</Text>
-    </Flex>
+    />
   );
 };
 
@@ -657,9 +675,10 @@ const TagManageButton = () => {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [order, setOrder] = useState<string[]>([]);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
     useSensor(KeyboardSensor)
   );
@@ -673,16 +692,14 @@ const TagManageButton = () => {
   const initOrder = () => setOrder(orderTags(allTags, publicInfo?.tag_order));
 
   const handleDragEnd = (event: any) => {
+    setActiveTag(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     setOrder((prev) => {
       const from = prev.indexOf(active.id as string);
       const to = prev.indexOf(over.id as string);
       if (from === -1 || to === -1) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return next;
+      return arrayMove(prev, from, to);
     });
   };
 
@@ -730,15 +747,20 @@ const TagManageButton = () => {
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            onDragStart={(e) => setActiveTag(e.active.id as string)}
             onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveTag(null)}
           >
-            <SortableContext items={order} strategy={verticalListSortingStrategy}>
+            <SortableContext items={order} strategy={rectSortingStrategy}>
               <Flex wrap="wrap" gap="2">
                 {order.map((tag) => (
                   <SortableTagChip key={tag} tag={tag} />
                 ))}
               </Flex>
             </SortableContext>
+            <DragOverlay>
+              {activeTag ? <TagChipBase tag={activeTag} overlay /> : null}
+            </DragOverlay>
           </DndContext>
         )}
         <Flex justify="end" gap="2" mt="4">
