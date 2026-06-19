@@ -303,38 +303,25 @@ body, * {
    color, so everything adapts to the ColorSwitch.
    ============================================================ */
 
-/* Springy hover-lift + press feedback on every button */
+/* Crisp, flat button feedback — no floating lift, no drop-shadow glow.
+   Hover just deepens the fill/ring; press gives a tiny scale. */
 .radix-themes .rt-BaseButton {
   transition:
-    transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
-    box-shadow 0.2s ease,
-    filter 0.2s ease,
-    background-color 0.18s ease;
-}
-.radix-themes .rt-BaseButton:not(:disabled):hover {
-  transform: translateY(-1px);
+    background-color 0.16s ease,
+    box-shadow 0.16s ease,
+    filter 0.16s ease,
+    transform 0.09s ease;
 }
 .radix-themes .rt-BaseButton:not(:disabled):active {
-  transform: translateY(0) scale(0.95);
-  transition-duration: 0.08s;
+  transform: scale(0.97);
 }
 
-/* Icons pop slightly on hover for a lively feel */
-.radix-themes .rt-BaseButton svg {
-  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.radix-themes .rt-BaseButton:not(:disabled):hover svg {
-  transform: scale(1.1);
-}
-
-/* Solid buttons (primary actions): accent gradient + soft glow */
+/* Solid buttons (primary actions): flat accent gradient, gentle brighten. */
 .radix-themes .rt-BaseButton.rt-variant-solid {
   background-image: linear-gradient(135deg, var(--accent-9), var(--accent-10));
-  box-shadow: 0 6px 16px -10px var(--accent-a10);
 }
 .radix-themes .rt-BaseButton.rt-variant-solid:not(:disabled):hover {
-  box-shadow: 0 12px 24px -10px var(--accent-a11);
-  filter: saturate(1.08) brightness(1.04);
+  filter: brightness(1.06);
 }
 /* While disabled (e.g. the "Installing…" state) our gradient stays
    painted on, so Radix's muted gray text/icon become unreadable.
@@ -345,20 +332,22 @@ body, * {
   opacity: 0.7;
 }
 
-/* Soft icon buttons (top toolbar): frosted chip with hover glow */
+/* Soft icon buttons (top toolbar): frosted chip, ring deepens on hover. */
 .radix-themes .rt-IconButton.rt-variant-soft {
   border-radius: 11px;
   box-shadow: inset 0 0 0 1px var(--accent-a4);
 }
 .radix-themes .rt-IconButton.rt-variant-soft:not(:disabled):hover {
-  box-shadow:
-    inset 0 0 0 1px var(--accent-a6),
-    0 8px 18px -10px var(--accent-a9);
+  box-shadow: inset 0 0 0 1px var(--accent-a7);
 }
 
-/* Soft text buttons (e.g. Manage Groups): subtle hover glow */
+/* Soft text buttons (e.g. Manage Groups / Manage Tags): a 1px ring gives the
+   pill definition; hover deepens the ring instead of floating it. */
+.radix-themes .rt-Button.rt-variant-soft {
+  box-shadow: inset 0 0 0 1px var(--accent-a5);
+}
 .radix-themes .rt-Button.rt-variant-soft:not(:disabled):hover {
-  box-shadow: 0 8px 18px -12px var(--accent-a9);
+  box-shadow: inset 0 0 0 1px var(--accent-a8);
 }
 
 /* Ghost buttons: rounder hit area */
