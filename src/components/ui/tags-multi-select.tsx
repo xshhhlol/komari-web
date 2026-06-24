@@ -67,10 +67,10 @@ export function TagsMultiSelect({
 
   const suggestions = React.useMemo(() => {
     const text = input.trim().toLowerCase();
+    // 展示全部可选标签（剔除已选），不再截断；下拉本身有 max-h-60 滚动
     return options
       .filter((o) => !tokens.includes(o))
-      .filter((o) => (text ? stripColor(o).toLowerCase().includes(text) : true))
-      .slice(0, 20);
+      .filter((o) => (text ? stripColor(o).toLowerCase().includes(text) : true));
   }, [options, tokens, input]);
 
   const trimmed = input.trim();
