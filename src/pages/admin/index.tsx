@@ -98,6 +98,27 @@ const getGroups = (nodes: NodeDetail[]): string[] =>
     new Set(nodes.map((n) => (n.group || "").trim()).filter(Boolean))
   ).sort((a, b) => a.localeCompare(b));
 
+// 解析全局分组顺序设置（";" 分隔）。
+const parseGroupOrder = (groupOrder?: string): string[] =>
+  (groupOrder || "")
+    .split(";")
+    .map((g) => g.trim())
+    .filter(Boolean);
+
+// 把分组按全局顺序排列：已在顺序表中的按其位置，未列出的（如新分组）按字母序追加在后。
+const orderGroups = (groups: string[], groupOrder?: string): string[] => {
+  const order = parseGroupOrder(groupOrder);
+  const rank = new Map(order.map((g, i) => [g, i]));
+  const rankOf = (g: string) =>
+    rank.has(g) ? rank.get(g)! : Number.POSITIVE_INFINITY;
+  return [...groups].sort((a, b) => {
+    const ra = rankOf(a);
+    const rb = rankOf(b);
+    if (ra !== rb) return ra - rb;
+    return a.localeCompare(b);
+  });
+};
+
 // 从节点列表中提取去重、排序后的标签（原始 ";" 分隔，保留 <color>）
 const getTags = (nodes: NodeDetail[]): string[] =>
   Array.from(
@@ -144,14 +165,20 @@ const NodeDetailsPage = () => {
 
 const Layout = () => {
   const { nodeDetail, isLoading, error, refresh } = useNodeDetails();
+  const { publicInfo } = usePublicInfo();
   const [searchTerm, setSearchTerm] = useState("");
   const [groupFilter, setGroupFilter] = useState<string>(GROUP_ALL);
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
 
   const nodes = Array.isArray(nodeDetail) ? nodeDetail : [];
+  // 分组筛选胶囊按后台「分组管理」设置的全局顺序排列（group_order）
   const groups = React.useMemo(
-    () => getGroups(Array.isArray(nodeDetail) ? nodeDetail : []),
-    [nodeDetail]
+    () =>
+      orderGroups(
+        getGroups(Array.isArray(nodeDetail) ? nodeDetail : []),
+        publicInfo?.group_order
+      ),
+    [nodeDetail, publicInfo?.group_order]
   );
   const groupCounts = React.useMemo(() => {
     const m: Record<string, number> = {};
@@ -465,20 +492,115 @@ const GroupFilterPills = ({
   );
 };
 
-// 分组管理：重命名 / 删除分组，批量同步组内所有节点。
-// 分组只是节点上的字符串字段，重命名/删除即对组内每个节点执行 edit。
+// 分组管理：拖拽排序 + 重命名 / 删除分组，批量同步组内所有节点。
+// 分组只是节点上的字符串字段，重命名/删除即对组内每个节点执行 edit；
+// 顺序保存到后端 group_order 设置，公开主页的分组筛选与后台的分组筛选/选择都按此排序。
+const SortableGroupRow = ({
+  group,
+  draft,
+  count,
+  saving,
+  confirmingDelete,
+  onDraftChange,
+  onRename,
+  onRequestDelete,
+  onConfirmDelete,
+  onCancelDelete,
+}: {
+  group: string;
+  draft: string;
+  count: number;
+  saving: boolean;
+  confirmingDelete: boolean;
+  onDraftChange: (value: string) => void;
+  onRename: () => void;
+  onRequestDelete: () => void;
+  onConfirmDelete: () => void;
+  onCancelDelete: () => void;
+}) => {
+  const { t } = useTranslation();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: group });
+  const changed = draft.trim() !== "" && draft.trim() !== group;
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <Flex ref={setNodeRef} style={style} gap="2" align="center">
+      <IconButton
+        variant="ghost"
+        color="gray"
+        className="cursor-grab active:cursor-grabbing touch-none"
+        title={t("admin.group.drag", "拖拽排序")}
+        {...attributes}
+        {...listeners}
+      >
+        <MenuIcon size={16} color="var(--gray-8)" />
+      </IconButton>
+      <TextField.Root
+        style={{ flex: 1 }}
+        value={draft}
+        onChange={(e) => onDraftChange(e.target.value)}
+      >
+        <TextField.Slot side="right">
+          <Text size="1" color="gray">
+            {count}
+          </Text>
+        </TextField.Slot>
+      </TextField.Root>
+      <Button variant="soft" disabled={saving || !changed} onClick={onRename}>
+        {t("admin.group.rename", "重命名")}
+      </Button>
+      {confirmingDelete ? (
+        <>
+          <Button color="red" disabled={saving} onClick={onConfirmDelete}>
+            {t("admin.nodeTable.confirm", "确认")}
+          </Button>
+          <Button variant="soft" onClick={onCancelDelete}>
+            {t("admin.nodeTable.cancel", "取消")}
+          </Button>
+        </>
+      ) : (
+        <IconButton
+          color="red"
+          variant="soft"
+          title={t("delete", "删除")}
+          onClick={onRequestDelete}
+        >
+          <Trash2Icon size={16} />
+        </IconButton>
+      )}
+    </Flex>
+  );
+};
+
 const GroupManageButton = () => {
   const { t } = useTranslation();
   const { nodeDetail, refresh } = useNodeDetails();
+  const { publicInfo, refresh: refreshPublic } = usePublicInfo();
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  // 本地拖拽顺序（分组名列表），打开时按已保存的 group_order 初始化
+  const [order, setOrder] = useState<string[]>([]);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 8 } }),
+    useSensor(KeyboardSensor)
+  );
 
   const nodes = Array.isArray(nodeDetail) ? nodeDetail : [];
   const groups = getGroups(nodes);
   const countOf = (g: string) =>
     nodes.filter((n) => (n.group || "").trim() === g).length;
+
+  // 打开时按当前已保存顺序初始化（新分组按字母序排在后面）
+  const initOrder = () => setOrder(orderGroups(groups, publicInfo?.group_order));
 
   const editGroup = async (group: string, uuids: string[]) => {
     await Promise.all(
@@ -490,6 +612,18 @@ const GroupManageButton = () => {
         })
       )
     );
+  };
+
+  const handleDragEnd = (event: any) => {
+    setActiveGroup(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setOrder((prev) => {
+      const from = prev.indexOf(active.id as string);
+      const to = prev.indexOf(over.id as string);
+      if (from === -1 || to === -1) return prev;
+      return arrayMove(prev, from, to);
+    });
   };
 
   const handleRename = async (oldName: string) => {
@@ -510,6 +644,8 @@ const GroupManageButton = () => {
         delete c[oldName];
         return c;
       });
+      // 保持重命名后的分组在原顺序位置
+      setOrder((prev) => prev.map((g) => (g === oldName ? newName : g)));
       toast.success(t("admin.group.renameSuccess", "重命名成功"));
       refresh();
     } catch (e) {
@@ -527,8 +663,24 @@ const GroupManageButton = () => {
         .map((n) => n.uuid);
       await editGroup("", uuids);
       setConfirmDelete(null);
+      setOrder((prev) => prev.filter((g) => g !== name));
       toast.success(t("admin.group.deleteSuccess", "已删除分组"));
       refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveOrder = async () => {
+    try {
+      setSaving(true);
+      // 只保存当前实际存在的分组，避免残留已删除的名字
+      const toSave = order.filter((g) => groups.includes(g));
+      await updateSettings({ group_order: toSave.join(";") });
+      refreshPublic();
+      toast.success(t("admin.group.saveSuccess", "分组顺序已保存"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : String(e));
     } finally {
@@ -541,7 +693,9 @@ const GroupManageButton = () => {
       open={open}
       onOpenChange={(o) => {
         setOpen(o);
-        if (!o) {
+        if (o) {
+          initOrder();
+        } else {
           setDrafts({});
           setConfirmDelete(null);
         }
@@ -558,69 +712,70 @@ const GroupManageButton = () => {
         <Dialog.Description size="2" color="gray" mb="3">
           {t(
             "admin.group.manageDescription",
-            "重命名或删除分组将同步更新组内所有服务器。删除分组仅清空其分组标签，不会删除服务器。"
+            "拖拽调整分组顺序，公开主页与后台的分组筛选/选择都会按此顺序排列。重命名或删除分组将同步更新组内所有服务器；删除分组仅清空其分组标签，不会删除服务器。"
           )}
         </Dialog.Description>
         <Flex direction="column" gap="3">
-          {groups.length === 0 && (
+          {order.length === 0 && (
             <Text size="2" color="gray">
               {t("admin.group.empty", "暂无分组")}
             </Text>
           )}
-          {groups.map((g) => {
-            const draft = drafts[g] ?? g;
-            const changed = draft.trim() !== "" && draft.trim() !== g;
-            return (
-              <Flex key={g} gap="2" align="center">
-                <TextField.Root
-                  style={{ flex: 1 }}
-                  value={draft}
-                  onChange={(e) =>
-                    setDrafts((p) => ({ ...p, [g]: e.target.value }))
-                  }
-                >
-                  <TextField.Slot side="right">
-                    <Text size="1" color="gray">
-                      {countOf(g)}
-                    </Text>
-                  </TextField.Slot>
-                </TextField.Root>
-                <Button
-                  variant="soft"
-                  disabled={saving || !changed}
-                  onClick={() => handleRename(g)}
-                >
-                  {t("admin.group.rename", "重命名")}
-                </Button>
-                {confirmDelete === g ? (
-                  <>
-                    <Button
-                      color="red"
-                      disabled={saving}
-                      onClick={() => handleDelete(g)}
-                    >
-                      {t("admin.nodeTable.confirm", "确认")}
-                    </Button>
-                    <Button
-                      variant="soft"
-                      onClick={() => setConfirmDelete(null)}
-                    >
-                      {t("admin.nodeTable.cancel", "取消")}
-                    </Button>
-                  </>
-                ) : (
-                  <IconButton
-                    color="red"
-                    variant="soft"
-                    title={t("delete", "删除")}
-                    onClick={() => setConfirmDelete(g)}
-                  >
-                    <Trash2Icon size={16} />
-                  </IconButton>
-                )}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={(e) => setActiveGroup(e.active.id as string)}
+            onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveGroup(null)}
+          >
+            <SortableContext items={order} strategy={rectSortingStrategy}>
+              <Flex direction="column" gap="3">
+                {order.map((g) => (
+                  <SortableGroupRow
+                    key={g}
+                    group={g}
+                    draft={drafts[g] ?? g}
+                    count={countOf(g)}
+                    saving={saving}
+                    confirmingDelete={confirmDelete === g}
+                    onDraftChange={(v) =>
+                      setDrafts((p) => ({ ...p, [g]: v }))
+                    }
+                    onRename={() => handleRename(g)}
+                    onRequestDelete={() => setConfirmDelete(g)}
+                    onConfirmDelete={() => handleDelete(g)}
+                    onCancelDelete={() => setConfirmDelete(null)}
+                  />
+                ))}
               </Flex>
-            );
-          })}
+            </SortableContext>
+            <DragOverlay>
+              {activeGroup ? (
+                <Flex
+                  gap="2"
+                  align="center"
+                  className="rounded-md bg-panel-solid shadow-lg px-2 py-1"
+                >
+                  <MenuIcon size={16} color="var(--gray-8)" />
+                  <Text size="2">{activeGroup}</Text>
+                </Flex>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </Flex>
+        <Flex justify="end" gap="2" mt="4">
+          <Dialog.Close>
+            <Button variant="soft" color="gray" radius="full">
+              {t("admin.nodeTable.cancel", "取消")}
+            </Button>
+          </Dialog.Close>
+          <Button
+            radius="full"
+            disabled={saving || order.length === 0}
+            onClick={handleSaveOrder}
+          >
+            {saving ? <Spinner size="2" /> : t("admin.group.save", "保存顺序")}
+          </Button>
         </Flex>
       </Dialog.Content>
     </Dialog.Root>
@@ -1893,8 +2048,9 @@ function EditButton({ node }: { node: NodeDetail }) {
   const [traffic_limit, setTrafficLimit] = useState(0);
   const [traffic_limit_type, setTrafficLimitType] = useState("sum");
 
-  const groupOptions = getGroups(
-    Array.isArray(nodeDetail) ? nodeDetail : []
+  const groupOptions = orderGroups(
+    getGroups(Array.isArray(nodeDetail) ? nodeDetail : []),
+    publicInfo?.group_order
   );
   const tagOptions = orderTags(
     getTags(Array.isArray(nodeDetail) ? nodeDetail : []),

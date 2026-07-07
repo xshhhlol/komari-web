@@ -182,7 +182,7 @@
     },
     "group": {
       "manage": "Manage Groups",
-      "manageDescription": "Renaming or deleting a group updates all servers in it. Deleting a group only clears its group label; it does not delete the servers.",
+      "manageDescription": "Drag to reorder groups; the order applies to the group filter on the public dashboard and the group filter/picker in the admin panel. Renaming or deleting a group updates all servers in it; deleting a group only clears its group label and does not delete the servers.",
       "rename": "Rename",
       "renameSuccess": "Renamed successfully",
       "deleteSuccess": "Group deleted",
@@ -190,7 +190,10 @@
       "exists": "Group already exists",
       "filterAll": "All groups",
       "ungrouped": "Ungrouped",
-      "filterByGroup": "Filter by group"
+      "filterByGroup": "Filter by group",
+      "drag": "Drag to reorder",
+      "save": "Save order",
+      "saveSuccess": "Group order saved"
     },
     "tag": {
       "manage": "Manage Tags",

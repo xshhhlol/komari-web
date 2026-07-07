@@ -182,7 +182,7 @@
     },
     "group": {
       "manage": "分组管理",
-      "manageDescription": "重命名或删除分组将同步更新组内所有服务器。删除分组仅清空其分组标签，不会删除服务器。",
+      "manageDescription": "拖拽调整分组顺序，公开主页与后台的分组筛选/选择都会按此顺序排列。重命名或删除分组将同步更新组内所有服务器；删除分组仅清空其分组标签，不会删除服务器。",
       "rename": "重命名",
       "renameSuccess": "重命名成功",
       "deleteSuccess": "已删除分组",
@@ -190,7 +190,10 @@
       "exists": "分组已存在",
       "filterAll": "全部分组",
       "ungrouped": "未分组",
-      "filterByGroup": "按分组筛选"
+      "filterByGroup": "按分组筛选",
+      "drag": "拖拽排序",
+      "save": "保存顺序",
+      "saveSuccess": "分组顺序已保存"
     },
     "tag": {
       "manage": "标签管理",

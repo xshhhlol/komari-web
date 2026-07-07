@@ -48,6 +48,10 @@ export interface PublicInfo {
   private_site: boolean;
   theme: string;
   theme_settings: any;
+  /** 标签全局显示顺序（";" 分隔），由后台「标签管理」设置 */
+  tag_order?: string;
+  /** 分组全局显示顺序（";" 分隔），由后台「分组管理」设置 */
+  group_order?: string;
   [property: string]: any;
 }
 
