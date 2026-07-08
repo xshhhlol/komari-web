@@ -127,6 +127,11 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
+      // es2022：避免把 @xterm/xterm 6.0 预压缩产物里的 ||= 等新语法降级重写。
+      // 默认 target 含 firefox78，esbuild 降级 requestMode 里的 `r||={}` 时会产出
+      // 对未声明变量赋值的代码（strict mode 下 ReferenceError），vim 一发 DECRQM
+      // （\e[?12$p）解析器就崩，整个终端假死。
+      target: "es2022",
       assetsDir: "assets",
       outDir: "dist",
       chunkSizeWarningLimit: 800,
@@ -163,6 +168,20 @@ export default defineConfig(({ mode }) => {
         "/themes": {
           target: process.env.VITE_API_TARGET,
           changeOrigin: true,
+        },
+      },
+    };
+  }
+
+  // vite preview 复用同一套代理，便于对压缩后的产物做端到端验证
+  if (process.env.VITE_API_TARGET) {
+    baseConfig.preview = {
+      proxy: {
+        "/api": {
+          target: process.env.VITE_API_TARGET,
+          changeOrigin: true,
+          rewriteWsOrigin: true,
+          ws: true,
         },
       },
     };
