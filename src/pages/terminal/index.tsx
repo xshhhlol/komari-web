@@ -406,6 +406,22 @@ const TerminalPage = () => {
       }
     });
 
+    // vim 在 TERM=xterm* 下启动时会用 XTGETTCAP（DCS + q）探测 terminfo 能力并
+    // 等待回应，而 xterm.js 未实现该查询，vim 会卡在等待上。这里统一应答
+    // 「无效请求」（DCS 0 + r <原请求> ST），vim 收到后立即放弃探测。agent 侧
+    // 因此才能把 TERM 设为 xterm-256color——vim 只在 xterm 系 TERM 下自动开启
+    // bracketed paste（mode 2004），这是网页粘贴不乱缩进的前提。
+    const xtgettcapDisposable = term.parser.registerDcsHandler(
+      { intermediates: "+", final: "q" },
+      (data) => {
+        if (!disposed && ws.readyState === WebSocket.OPEN) {
+          const encoder = new TextEncoder();
+          ws.send(encoder.encode(`\x1bP0+r${data}\x1b\\`));
+        }
+        return true;
+      }
+    );
+
     const handleResize = () => {
       resizeTerminal();
     };
@@ -444,9 +460,10 @@ const TerminalPage = () => {
           if (disposed || ws.readyState !== WebSocket.OPEN) {
             return;
           }
-          const encoder = new TextEncoder();
-          const uint8Array = encoder.encode(text.replace(/\r?\n/g, "\r"));
-          ws.send(uint8Array);
+          // 必须走 xterm.js 的粘贴管道：除换行转换外，它会在应用开启 bracketed
+          // paste（mode 2004，如 vim）时包上 \e[200~…\e[201~；直接 ws.send 裸文本
+          // 会被 vim 当成逐字输入，autoindent 会弄乱缩进。
+          term.paste(text);
         });
       }
     };
@@ -467,6 +484,7 @@ const TerminalPage = () => {
       }
       termDataDisposable.dispose();
       termBinaryDisposable.dispose();
+      xtgettcapDisposable.dispose();
       term.dispose();
       if (customCssStyle.parentNode) {
         customCssStyle.parentNode.removeChild(customCssStyle);
