@@ -73,6 +73,23 @@ const Inner = () => {
           );
         }}
       />
+      <SettingCardLabel>
+        {t("admin.notification.cn_blocked_title", "被墙提醒")}
+      </SettingCardLabel>
+      <SettingCardSwitch
+        title={t("admin.notification.cn_blocked", "节点被墙 / 恢复通知")}
+        description={t(
+          "admin.notification.cn_blocked_description",
+          "启用后，当节点被判定为“被墙”或从被墙状态恢复时发送通知。判定依赖标记为“国内参照点”的延迟监测任务，状态需持续 3 分钟才会通知；节点离线导致数据缺失时不会误报恢复。"
+        )}
+        defaultChecked={settings.cn_blocked_notification_enabled}
+        onChange={async (checked) => {
+          await updateSettingsWithToast(
+            { cn_blocked_notification_enabled: checked },
+            t
+          );
+        }}
+      />
       <SettingCardLabel>{t("admin.notification.traffic")}</SettingCardLabel>
       <SettingCardShortTextInput
         title={t("admin.notification.traffic")}

@@ -178,7 +178,10 @@
       "login": "Login Notification",
       "login_description": "Send a notification when a new session logs into Komari.",
       "traffic": "Traffic Usage",
-      "traffic_description": "Komari will send notifications when the server reaches the specified percentage of traffic usage, with reminders at 5% increments. If no traffic threshold is set, no notifications will be sent. Set to 0 to disable traffic reminders."
+      "traffic_description": "Komari will send notifications when the server reaches the specified percentage of traffic usage, with reminders at 5% increments. If no traffic threshold is set, no notifications will be sent. Set to 0 to disable traffic reminders.",
+      "cn_blocked_title": "GFW block alerts",
+      "cn_blocked": "Node blocked / recovered notification",
+      "cn_blocked_description": "When enabled, a notification is sent once a node is flagged as GFW-blocked or recovers from it. Detection relies on ping tasks marked as China reference targets; the new state must hold for 3 minutes before notifying, and missing data (e.g. an offline node) never reports a false recovery."
     },
     "group": {
       "manage": "Manage Groups",
