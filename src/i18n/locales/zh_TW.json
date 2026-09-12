@@ -463,8 +463,10 @@
     "target": "目標",
     "task": "任務",
     "task_view": "任務視圖",
+    "tcp_bulk_description": "連線後送出一個帶約 7KB 請求標頭的 HTTP 請求（約 5 個滿封包），測量節點→目標方向滿封包的往返延遲與重傳率，不受「小封包優化」影響。目標填 HTTP(S) 服務的 host:port 或 http(s)://host/path；僅支援 Linux / macOS agent。",
     "title": "延遲監測",
-    "type": "類型"
+    "type": "類型",
+    "type_tcp_bulk": "TCP 大封包"
   },
   "pwa": {
     "browser": "瀏覽器模式",

@@ -495,8 +495,10 @@
     "target": "Target",
     "task": "Task",
     "task_view": "Task View",
+    "tcp_bulk_description": "Sends an HTTP request with ~7 KB of headers (about 5 full-size packets) after connecting, and measures the round-trip time and retransmission rate of full-size packets from the node to the target, unaffected by small-packet prioritization. Target: host:port or http(s)://host/path of any HTTP(S) service. Linux/macOS agents only.",
     "title": "Latency",
-    "type": "Type"
+    "type": "Type",
+    "type_tcp_bulk": "TCP (large packets)"
   },
   "pwa": {
     "browser": "Browser Mode",

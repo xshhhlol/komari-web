@@ -495,8 +495,10 @@
     "target": "目标",
     "task": "任务",
     "task_view": "任务视图",
+    "tcp_bulk_description": "连接后发出一个带约 7KB 请求头的 HTTP 请求（约 5 个满包），测节点→目标方向满包的往返延迟与重传率，不受「小包优化」影响。目标填 HTTP(S) 服务的 host:port 或 http(s)://host/path；仅支持 Linux / macOS agent。",
     "title": "延迟监测",
-    "type": "类型"
+    "type": "类型",
+    "type_tcp_bulk": "TCP 大包"
   },
   "pwa": {
     "browser": "浏览器模式",

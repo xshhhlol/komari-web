@@ -139,7 +139,7 @@ const AddButton: React.FC = () => {
   const [blockCheck, setBlockCheck] = React.useState(false);
   const { refresh } = usePingTask();
   const [selectedType, setSelectedType] = React.useState<
-    "icmp" | "tcp" | "http"
+    "icmp" | "tcp" | "tcp_bulk" | "http"
   >("icmp");
   const [saving, setSaving] = React.useState(false);
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -208,21 +208,33 @@ const AddButton: React.FC = () => {
             <Select.Root
               value={selectedType}
               onValueChange={(value) =>
-                setSelectedType(value as "icmp" | "tcp" | "http")
+                setSelectedType(value as "icmp" | "tcp" | "tcp_bulk" | "http")
               }
             >
               <Select.Trigger id="type" name="type" />
               <Select.Content>
                 <Select.Item value="icmp">ICMP</Select.Item>
                 <Select.Item value="tcp">TCP</Select.Item>
+                <Select.Item value="tcp_bulk">
+                  {t("ping.type_tcp_bulk", "TCP (large packets)")}
+                </Select.Item>
                 <Select.Item value="http">HTTP</Select.Item>
               </Select.Content>
             </Select.Root>
+            {selectedType === "tcp_bulk" && (
+              <label className="text-sm font-normal text-gray-500">
+                {t("ping.tcp_bulk_description")}
+              </label>
+            )}
             <label htmlFor="ping_target">{t("ping.target")}</label>
             <TextField.Root
               id="ping_target"
               name="ping_target"
-              placeholder="1.1.1.1 | 1.1.1.1:80 | https://1.1.1.1"
+              placeholder={
+                selectedType === "tcp_bulk"
+                  ? "1.1.1.1:80 | https://example.com"
+                  : "1.1.1.1 | 1.1.1.1:80 | https://1.1.1.1"
+              }
             />
             <label htmlFor="ping_server">{t("common.server")}</label>
             <div className="flex flex-col gap-2">

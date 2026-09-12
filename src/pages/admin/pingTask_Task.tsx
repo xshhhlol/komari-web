@@ -379,9 +379,17 @@ const Row = ({
                 <Select.Content>
                   <Select.Item value="icmp">ICMP</Select.Item>
                   <Select.Item value="tcp">TCP</Select.Item>
+                  <Select.Item value="tcp_bulk">
+                    {t("ping.type_tcp_bulk", "TCP (large packets)")}
+                  </Select.Item>
                   <Select.Item value="http">HTTP</Select.Item>
                 </Select.Content>
               </Select.Root>
+              {form.type === "tcp_bulk" && (
+                <label className="text-sm font-normal text-gray-500">
+                  {t("ping.tcp_bulk_description")}
+                </label>
+              )}
               <label>{t("ping.target")}</label>
               <TextField.Root
                 value={form.target}
