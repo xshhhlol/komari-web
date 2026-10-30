@@ -5,6 +5,8 @@ import type { ITerminalOptions } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { SearchAddon } from "@xterm/addon-search";
+import { Unicode11Addon } from "@xterm/addon-unicode11";
+import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import "./Terminal.css";
 import { Callout, Flex, IconButton, Theme } from "@radix-ui/themes";
@@ -254,6 +256,8 @@ const TerminalPage = () => {
       fontSize: snapshot.terminalOptions.fontSize,
       macOptionIsMeta: snapshot.terminalOptions.macOptionIsMeta,
       scrollback: snapshot.terminalOptions.scrollback,
+      // Unicode11Addon 属于 proposed API
+      allowProposedApi: true,
     };
 
     if (snapshot.terminalOptions.theme !== undefined) {
@@ -276,8 +280,24 @@ const TerminalPage = () => {
     term.loadAddon(webLinksAddon);
     term.loadAddon(searchAddon);
 
+    // 用 Unicode 11 宽度表判定中文/emoji 等宽字符，与服务端 wcwidth 保持一致
+    term.loadAddon(new Unicode11Addon());
+    term.unicode.activeVersion = "11";
+
     term.open(terminalRef.current);
     terminalInstance.current = term;
+
+    // 默认的 DOM 渲染器按整行排版文字，中文字形实际宽度不是精确的 2 格，
+    // 字会逐渐漂离单元格网格，而选区按网格计算——于是高亮和复制内容错位。
+    // WebGL 渲染器把每个字形画进各自的单元格，显示与选区严格对齐；
+    // 不支持 WebGL 或上下文丢失时退回 DOM 渲染器。
+    try {
+      const webglAddon = new WebglAddon();
+      webglAddon.onContextLoss(() => webglAddon.dispose());
+      term.loadAddon(webglAddon);
+    } catch (error) {
+      console.warn("WebGL renderer unavailable, falling back to DOM", error);
+    }
 
     const customCssStyle = document.createElement("style");
     customCssStyle.id = "xtermjs-custom-css";
