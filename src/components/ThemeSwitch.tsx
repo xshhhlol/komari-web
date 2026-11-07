@@ -1,42 +1,26 @@
-import { DropdownMenu, IconButton } from "@radix-ui/themes";
-import { useContext, type ReactNode } from "react";
+import { IconButton } from "@radix-ui/themes";
+import { useContext } from "react";
 import { ThemeContext } from "../contexts/ThemeContext";
-import { SunIcon } from "@radix-ui/react-icons";
+import { MoonIcon, SunIcon } from "@radix-ui/react-icons";
 import { useTranslation } from "react-i18next";
 
-interface ThemeSwitchProps {
-  icon?: ReactNode;
-  content?: {
-    light?: ReactNode;
-    dark?: ReactNode;
-    system?: ReactNode;
-  };
-}
-
-const ThemeSwitch = ({
-  icon = (
-    <IconButton variant="soft">
-      <SunIcon />
-    </IconButton>
-  ),
-}: ThemeSwitchProps = {}) => {
-  const { setAppearance } = useContext(ThemeContext);
+// 浅色 / 深色切换：点一下直接切换，图标显示当前模式。
+const ThemeSwitch = () => {
+  const { appearance, setAppearance } = useContext(ThemeContext);
   const [t] = useTranslation();
+  const isDark = appearance === "dark";
   return (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger>{icon}</DropdownMenu.Trigger>
-      <DropdownMenu.Content>
-        <DropdownMenu.Item onSelect={() => setAppearance("light")}>
-          {t("theme.light", "Light")}
-        </DropdownMenu.Item>
-        <DropdownMenu.Item onSelect={() => setAppearance("dark")}>
-          {t("theme.dark", "Dark")}
-        </DropdownMenu.Item>
-        <DropdownMenu.Item onSelect={() => setAppearance("system")}>
-          {t("theme.system", "System")}
-        </DropdownMenu.Item>
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
+    <IconButton
+      variant="soft"
+      title={
+        isDark
+          ? t("theme.switch_to_light", "切换到浅色")
+          : t("theme.switch_to_dark", "切换到深色")
+      }
+      onClick={() => setAppearance(isDark ? "light" : "dark")}
+    >
+      {isDark ? <MoonIcon /> : <SunIcon />}
+    </IconButton>
   );
 };
 

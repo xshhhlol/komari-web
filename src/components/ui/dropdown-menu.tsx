@@ -5,7 +5,6 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Theme } from "@radix-ui/themes"
 import { ThemeContext as AppThemeContext } from "@/contexts/ThemeContext"
-import { useSystemTheme } from "@/hooks/useSystemTheme"
 
 function DropdownMenu({
   ...props
@@ -39,7 +38,7 @@ function DropdownMenuContent({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   const { appearance, color } = React.useContext(AppThemeContext);
-  const resolvedAppearance = useSystemTheme(appearance);
+  const resolvedAppearance = appearance;
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
@@ -236,7 +235,7 @@ function DropdownMenuSubContent({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
   const { appearance, color } = React.useContext(AppThemeContext);
-  const resolvedAppearance = useSystemTheme(appearance);
+  const resolvedAppearance = appearance;
   return (
     <DropdownMenuPrimitive.SubContent
       data-slot="dropdown-menu-sub-content"

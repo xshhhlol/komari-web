@@ -6,10 +6,10 @@ import "@radix-ui/themes/styles.css";
 import {
   ThemeContext,
   THEME_DEFAULTS,
+  normalizeAppearance,
   type Appearance,
 } from "./contexts/ThemeContext";
 import { useLocalStorage } from "./hooks/useLocalStorage";
-import { useSystemTheme } from "./hooks/useSystemTheme";
 import { BrowserRouter } from "react-router-dom";
 // Ensure i18n is initialized before any component renders
 import "./i18n/config";
@@ -39,14 +39,13 @@ const App = () => {
       );
     }
   }, []);
-  const [appearance, setAppearance] = useLocalStorage<Appearance>(
+  const [storedAppearance, setAppearance] = useLocalStorage<Appearance>(
     "appearance",
     THEME_DEFAULTS.appearance,
   );
+  const appearance = normalizeAppearance(storedAppearance);
+  const resolvedAppearance = appearance;
   const color = THEME_DEFAULTS.color;
-
-  // Use the system theme hook to resolve "system" to actual theme
-  const resolvedAppearance = useSystemTheme(appearance);
 
   React.useEffect(() => {
     const isDark = resolvedAppearance === "dark";
