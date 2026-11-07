@@ -87,37 +87,13 @@ import { useSettings, updateSettings } from "@/lib/api";
 import { usePublicInfo } from "@/contexts/PublicInfoContext";
 import { SelectOrInput } from "@/components/ui/select-or-input";
 import { TagsMultiSelect } from "@/components/ui/tags-multi-select";
-
-// 分组过滤的特殊取值（"" 不能作为 Radix Select 的 value）
-const GROUP_ALL = "__all__";
-const GROUP_UNGROUPED = "__ungrouped__";
-
-// 从节点列表中提取去重、排序后的分组名（忽略空分组）
-const getGroups = (nodes: NodeDetail[]): string[] =>
-  Array.from(
-    new Set(nodes.map((n) => (n.group || "").trim()).filter(Boolean))
-  ).sort((a, b) => a.localeCompare(b));
-
-// 解析全局分组顺序设置（";" 分隔）。
-const parseGroupOrder = (groupOrder?: string): string[] =>
-  (groupOrder || "")
-    .split(";")
-    .map((g) => g.trim())
-    .filter(Boolean);
-
-// 把分组按全局顺序排列：已在顺序表中的按其位置，未列出的（如新分组）按字母序追加在后。
-const orderGroups = (groups: string[], groupOrder?: string): string[] => {
-  const order = parseGroupOrder(groupOrder);
-  const rank = new Map(order.map((g, i) => [g, i]));
-  const rankOf = (g: string) =>
-    rank.has(g) ? rank.get(g)! : Number.POSITIVE_INFINITY;
-  return [...groups].sort((a, b) => {
-    const ra = rankOf(a);
-    const rb = rankOf(b);
-    if (ra !== rb) return ra - rb;
-    return a.localeCompare(b);
-  });
-};
+import { GroupFilterPills } from "@/components/admin/GroupFilterPills";
+import {
+  GROUP_ALL,
+  GROUP_UNGROUPED,
+  getGroups,
+  orderGroups,
+} from "@/utils/nodeGroups";
 
 // 从节点列表中提取去重、排序后的标签（原始 ";" 分隔，保留 <color>）
 const getTags = (nodes: NodeDetail[]): string[] =>
@@ -430,68 +406,6 @@ const Header = ({
 };
 
 // 顶部分组筛选：水平平铺的分组胶囊（全部 / 未分组 / 各分组），点击即筛选。
-const GroupFilterPills = ({
-  groups,
-  counts,
-  total,
-  ungroupedCount,
-  groupFilter,
-  setGroupFilter,
-}: {
-  groups: string[];
-  counts: Record<string, number>;
-  total: number;
-  ungroupedCount: number;
-  groupFilter: string;
-  setGroupFilter: (g: string) => void;
-}) => {
-  const { t } = useTranslation();
-  const Pill = ({
-    value,
-    label,
-    count,
-  }: {
-    value: string;
-    label: string;
-    count: number;
-  }) => (
-    <button
-      type="button"
-      className="group-pill"
-      data-active={groupFilter === value}
-      onClick={() => setGroupFilter(value)}
-      title={label}
-    >
-      <span
-        style={{
-          maxWidth: 160,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {label}
-      </span>
-      <span className="group-pill-count">{count}</span>
-    </button>
-  );
-  return (
-    <Flex gap="2" wrap="wrap" align="center">
-      <Pill value={GROUP_ALL} label={t("admin.group.filterAll", "全部分组")} count={total} />
-      {ungroupedCount > 0 && (
-        <Pill
-          value={GROUP_UNGROUPED}
-          label={t("admin.group.ungrouped", "未分组")}
-          count={ungroupedCount}
-        />
-      )}
-      {groups.map((g) => (
-        <Pill key={g} value={g} label={g} count={counts[g] ?? 0} />
-      ))}
-    </Flex>
-  );
-};
-
 // 分组管理：拖拽排序 + 重命名 / 删除分组，批量同步组内所有节点。
 // 分组只是节点上的字符串字段，重命名/删除即对组内每个节点执行 edit；
 // 顺序保存到后端 group_order 设置，公开主页的分组筛选与后台的分组筛选/选择都按此排序。
