@@ -21,4 +21,21 @@ if (hits.length) {
   for (const h of hits) console.error("  " + h);
   process.exit(1);
 }
-console.log("[check-dist] OK: 未发现压缩损坏模式");
+// 后端用 //go:embed 打包 dist，会静默忽略以 "_" 或 "." 开头的文件，
+// 这类产物上线后直接 404（例如 _layout 的 CSS 丢失，后台样式全无）。
+const hidden = [];
+const walk = (d) => {
+  for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+    const p = path.join(d, e.name);
+    if (e.name.startsWith("_") || e.name.startsWith(".")) hidden.push(p);
+    if (e.isDirectory()) walk(p);
+  }
+};
+walk("dist");
+if (hidden.length) {
+  console.error("[check-dist] 以下产物以 _ 或 . 开头，会被 go:embed 忽略，构建终止：");
+  for (const h of hidden) console.error("  " + h);
+  process.exit(1);
+}
+
+console.log("[check-dist] OK: 未发现压缩损坏模式，也没有会被 go:embed 忽略的文件");

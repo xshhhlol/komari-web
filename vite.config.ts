@@ -137,9 +137,11 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 800,
       rollupOptions: {
         output: {
-          // go embed ignore files start with '_'
+          // go embed ignore files start with '_'（例如 pages/admin/_layout 的产物），
+          // 所以 JS / CSS 等所有产物都加前缀；script/check-dist.mjs 会兜底检查。
           chunkFileNames: "assets/chunk-[name]-[hash].js",
           entryFileNames: "assets/entry-[name]-[hash].js",
+          assetFileNames: "assets/asset-[name]-[hash][extname]",
           // Do not use manualChunks, use React.lazy() and <Suspense> instead
         }
       },
