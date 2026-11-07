@@ -1,5 +1,4 @@
 import ThemeSwitch from "./ThemeSwitch";
-import ColorSwitch from "./ColorSwitch";
 import LanguageSwitch from "./Language";
 import LoginDialog from "./Login";
 import { IconButton } from "@radix-ui/themes";
@@ -44,7 +43,6 @@ const NavBar = () => {
         </IconButton>
 
         <ThemeSwitch />
-        <ColorSwitch />
         <LanguageSwitch />
         {publicInfo?.private_site && !document.cookie.includes("temp_key") ? (
           <LoginDialog

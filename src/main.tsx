@@ -7,7 +7,6 @@ import {
   ThemeContext,
   THEME_DEFAULTS,
   type Appearance,
-  type Colors,
 } from "./contexts/ThemeContext";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { useSystemTheme } from "./hooks/useSystemTheme";
@@ -44,10 +43,7 @@ const App = () => {
     "appearance",
     THEME_DEFAULTS.appearance,
   );
-  const [color, setColor] = useLocalStorage<Colors>(
-    "color",
-    THEME_DEFAULTS.color,
-  );
+  const color = THEME_DEFAULTS.color;
 
   // Use the system theme hook to resolve "system" to actual theme
   const resolvedAppearance = useSystemTheme(appearance);
@@ -62,9 +58,8 @@ const App = () => {
       appearance,
       setAppearance,
       color,
-      setColor,
     }),
-    [appearance, setAppearance, color, setColor],
+    [appearance, setAppearance, color],
   );
   const routing = useRoutes(routes);
   return (
