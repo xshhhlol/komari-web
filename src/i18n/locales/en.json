@@ -469,7 +469,6 @@
       "filter_all": "All",
       "filter_on": "On",
       "filter_off": "Off",
-      "group_view": "Group by node group",
       "not_found": "{{count}} not found: {{list}}",
       "showing": "Showing {{shown}} of {{total}} nodes",
       "clear_filters": "Clear filters",
@@ -478,8 +477,7 @@
       "batch_offline_off": "Offline alerts off",
       "batch_cn_on": "CN-blocked alerts on",
       "batch_cn_off": "CN-blocked alerts off",
-      "batch_done": "Updated {{count}} nodes",
-      "group_summary": "{{count}} nodes · offline alerts {{offline}} · CN-blocked alerts {{cn}}"
+      "batch_done": "Updated {{count}} nodes"
     },
     "title": "Notification",
     "traffic_report": {

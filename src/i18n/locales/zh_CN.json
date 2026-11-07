@@ -469,7 +469,6 @@
       "filter_all": "全部",
       "filter_on": "已开启",
       "filter_off": "已关闭",
-      "group_view": "按分组显示",
       "not_found": "未找到 {{count}} 个：{{list}}",
       "showing": "显示 {{shown}} / 共 {{total}} 个节点",
       "clear_filters": "清除筛选",
@@ -478,8 +477,7 @@
       "batch_offline_off": "关闭离线通知",
       "batch_cn_on": "开启被墙通知",
       "batch_cn_off": "关闭被墙通知",
-      "batch_done": "已更新 {{count}} 个节点",
-      "group_summary": "{{count}} 个节点 · 离线通知 {{offline}} · 被墙通知 {{cn}}"
+      "batch_done": "已更新 {{count}} 个节点"
     },
     "title": "通知",
     "traffic_report": {

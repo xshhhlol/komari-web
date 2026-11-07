@@ -19,7 +19,7 @@ import {
 } from "@/contexts/NotificationContext";
 import { usePublicInfo } from "@/contexts/PublicInfoContext";
 import React from "react";
-import { ChevronDown, ChevronRight, Pencil, Search } from "lucide-react";
+import { Pencil, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   Button,
@@ -45,7 +45,6 @@ import {
 
 const OFFLINE_ENDPOINT = "/api/admin/notification/offline";
 const CN_BLOCKED_ENDPOINT = "/api/admin/notification/offline/cn-blocked";
-const GROUPED_VIEW_KEY = "komari.notify.grouped";
 
 const OfflinePage = () => {
   return (
@@ -108,14 +107,6 @@ const nodeMatches = (node: NodeDetail, keyword: string) =>
   [node.name, node.ipv4, node.ipv6].some((v) =>
     (v || "").toLowerCase().includes(keyword)
   );
-
-const readGroupedView = () => {
-  try {
-    return localStorage.getItem(GROUPED_VIEW_KEY) !== "0";
-  } catch {
-    return true;
-  }
-};
 
 const NotificationEditForm = ({
   initialValues,
@@ -355,8 +346,6 @@ const InnerLayout = () => {
   const [groupFilter, setGroupFilter] = React.useState<string>(GROUP_ALL);
   const [offlineFilter, setOfflineFilter] = React.useState<StatusFilter>("all");
   const [cnFilter, setCnFilter] = React.useState<StatusFilter>("all");
-  const [grouped, setGrouped] = React.useState(readGroupedView);
-  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set());
   const [selected, setSelected] = React.useState<string[]>([]);
   const [batchLoading, setBatchLoading] = React.useState(false);
   const [batchDialogOpen, setBatchDialogOpen] = React.useState(false);
@@ -477,15 +466,6 @@ const InnerLayout = () => {
     setCnFilter("all");
   };
 
-  const setGroupedView = (v: boolean) => {
-    setGrouped(v);
-    try {
-      localStorage.setItem(GROUPED_VIEW_KEY, v ? "1" : "0");
-    } catch {
-      // 存不了就只在本次生效
-    }
-  };
-
   // 粘贴多行（如一列 IP）时把换行换成空格：单行输入框会直接吞掉换行，把 IP 粘成一串。
   const handleSearchPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const text = e.clipboardData.getData("text");
@@ -562,24 +542,6 @@ const InnerLayout = () => {
       });
   };
 
-  // 分组展示：按全局分组顺序，未分组放最后；只列有节点（经筛选后）的分组。
-  const sections = React.useMemo(() => {
-    if (!grouped) return [{ key: "", label: "", nodes: filtered }];
-    const byGroup = new Map<string, NodeDetail[]>();
-    for (const n of filtered) {
-      const g = (n.group || "").trim();
-      if (!byGroup.has(g)) byGroup.set(g, []);
-      byGroup.get(g)!.push(n);
-    }
-    return [...groups, ""]
-      .filter((g) => byGroup.has(g))
-      .map((g) => ({
-        key: g || GROUP_UNGROUPED,
-        label: g || t("admin.group.ungrouped", "未分组"),
-        nodes: byGroup.get(g)!,
-      }));
-  }, [grouped, filtered, groups, t]);
-
   if (onLoading || onNodeLoading) {
     return <Loading text="(o゜▽゜)o☆" />;
   }
@@ -623,10 +585,6 @@ const InnerLayout = () => {
           value={cnFilter}
           onChange={setCnFilter}
         />
-        <Text as="label" size="2" className="flex items-center gap-2">
-          <Switch checked={grouped} onCheckedChange={setGroupedView} />
-          {t("notification.offline.group_view", "按分组显示")}
-        </Text>
       </Flex>
 
       {(groups.length > 0 || ungroupedCount > 0) && (
@@ -728,22 +686,11 @@ const InnerLayout = () => {
       </Flex>
 
       <NotificationTable
-        sections={sections}
-        grouped={grouped}
         filtered={filtered}
         valuesOf={valuesOf}
         lastNotifiedOf={(uuid) => confByUUID.get(uuid)?.last_notified}
         selected={selected}
         onSelectionChange={setSelected}
-        collapsed={collapsed}
-        onToggleCollapse={(key) =>
-          setCollapsed((prev) => {
-            const next = new Set(prev);
-            if (next.has(key)) next.delete(key);
-            else next.add(key);
-            return next;
-          })
-        }
       />
 
       <label className="text-sm text-muted-foreground">
@@ -755,33 +702,26 @@ const InnerLayout = () => {
   );
 };
 
-// 一组节点的勾选状态：全选 / 部分 / 未选。
+// 表头勾选状态：全选 / 部分 / 未选。
 const checkState = (uuids: string[], selected: string[]) => {
   if (uuids.length === 0) return false;
   const n = uuids.filter((id) => selected.includes(id)).length;
   return n === 0 ? false : n === uuids.length ? true : "indeterminate";
 };
 
+// 节点平铺列表（按权重排序）；分组用上方的分组胶囊筛选，列表里不再分段。
 const NotificationTable = ({
-  sections,
-  grouped,
   filtered,
   valuesOf,
   lastNotifiedOf,
   selected,
   onSelectionChange,
-  collapsed,
-  onToggleCollapse,
 }: {
-  sections: { key: string; label: string; nodes: NodeDetail[] }[];
-  grouped: boolean;
   filtered: NodeDetail[];
   valuesOf: (uuid: string) => EditValues;
   lastNotifiedOf: (uuid: string) => string | undefined;
   selected: string[];
   onSelectionChange: (ids: string[]) => void;
-  collapsed: Set<string>;
-  onToggleCollapse: (key: string) => void;
 }) => {
   const { t } = useTranslation();
   // 勾选 / 取消一批节点，保留其它已选项。
@@ -826,66 +766,16 @@ const NotificationTable = ({
               </TableCell>
             </TableRow>
           )}
-          {sections.map((section) => {
-            const uuids = section.nodes.map((n) => n.uuid);
-            const isCollapsed = grouped && collapsed.has(section.key);
-            const offlineOn = uuids.filter((id) => valuesOf(id).enable).length;
-            const cnOn = uuids.filter((id) => valuesOf(id).cn_blocked).length;
-            return (
-              <React.Fragment key={section.key || "__flat__"}>
-                {grouped && (
-                  <TableRow className="bg-[var(--accent-a3)]">
-                    <TableCell>
-                      <Checkbox
-                        checked={checkState(uuids, selected)}
-                        onCheckedChange={(checked) =>
-                          toggleMany(uuids, !!checked)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell colSpan={columns - 1}>
-                      <button
-                        type="button"
-                        className="flex items-center gap-2 w-full text-left"
-                        onClick={() => onToggleCollapse(section.key)}
-                      >
-                        {isCollapsed ? (
-                          <ChevronRight size={16} />
-                        ) : (
-                          <ChevronDown size={16} />
-                        )}
-                        <Text size="2" weight="bold">
-                          {section.label}
-                        </Text>
-                        <Text size="1" color="gray">
-                          {t("notification.offline.group_summary", {
-                            count: uuids.length,
-                            offline: `${offlineOn}/${uuids.length}`,
-                            cn: `${cnOn}/${uuids.length}`,
-                            defaultValue:
-                              "{{count}} 个节点 · 离线通知 {{offline}} · 被墙通知 {{cn}}",
-                          })}
-                        </Text>
-                      </button>
-                    </TableCell>
-                  </TableRow>
-                )}
-                {!isCollapsed &&
-                  section.nodes.map((node) => (
-                    <NodeRow
-                      key={node.uuid}
-                      node={node}
-                      values={valuesOf(node.uuid)}
-                      lastNotified={lastNotifiedOf(node.uuid)}
-                      checked={selected.includes(node.uuid)}
-                      onCheckedChange={(checked) =>
-                        toggleMany([node.uuid], checked)
-                      }
-                    />
-                  ))}
-              </React.Fragment>
-            );
-          })}
+          {filtered.map((node) => (
+            <NodeRow
+              key={node.uuid}
+              node={node}
+              values={valuesOf(node.uuid)}
+              lastNotified={lastNotifiedOf(node.uuid)}
+              checked={selected.includes(node.uuid)}
+              onCheckedChange={(checked) => toggleMany([node.uuid], checked)}
+            />
+          ))}
         </TableBody>
       </Table>
     </div>
