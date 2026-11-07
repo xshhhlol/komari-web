@@ -24,6 +24,7 @@ import { useAccount } from "@/contexts/AccountContext";
 import { usePublicInfo } from "@/contexts/PublicInfoContext";
 import Tips from "../ui/tips";
 import { CircleFadingArrowUp } from "lucide-react";
+import "./admin-ui.css";
 import { useRPC2Call } from "@/contexts/RPC2Context";
 import { resolveI18nText } from "@/utils/i18nText";
 import {
@@ -324,12 +325,11 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
             p="2"
             justify="between"
             align="center"
-            className="glass"
+            className="glass nn-topbar"
             style={{
               position: "sticky",
               top: 0,
               zIndex: 20,
-              borderBottom: "1px solid var(--accent-a4)",
             }}
           >
             <Flex gap="3" align="center">
@@ -408,14 +408,14 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
                   </div>
                 </Tips>
               )}
-              <label
-                className="text-sm text-muted-foreground self-end overflow-hidden"
-                hidden={isMobile}
-              >
-                {(publicInfo as any)?.version ||
-                  (versionInfo &&
-                    `${versionInfo.version} (${versionInfo.hash})`)}
-              </label>
+              {!isMobile &&
+                ((publicInfo as any)?.version || versionInfo) && (
+                  <span className="nn-version">
+                    {(publicInfo as any)?.version ||
+                      (versionInfo &&
+                        `${versionInfo.version} · ${versionInfo.hash}`)}
+                  </span>
+                )}
             </Flex>
             <Flex gap="3" align="center" overflowX="auto">
               {account && !account.logged_in && (
@@ -429,7 +429,12 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
               )}
               <ThemeSwitch />
               <LanguageSwitch />
-              <IconButton variant="soft" color="orange" onClick={logout}>
+              <IconButton
+                variant="soft"
+                className="nn-logout"
+                title={t("admin.logout", "退出登录")}
+                onClick={logout}
+              >
                 <ExitIcon />
               </IconButton>
             </Flex>
@@ -462,7 +467,7 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
               style={{
                 height: "100%",
                 minWidth: "240px",
-                borderRight: isMobile ? "none" : "1px solid var(--accent-a4)",
+                borderRight: isMobile ? "none" : "1px solid var(--gray-a4)",
               }}
             >
               {/* 关闭按钮 */}
@@ -542,7 +547,7 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
                       return (
                         <div key={item.path}>
                           <Flex
-                            className="p-2 gap-2 border-l-[4px] border-transparent cursor-pointer hover:bg-accent-3 rounded-md"
+                            className="nav-pill gap-2"
                             align="center"
                             onClick={() => {
                               //const currentlyOpen = openSubMenus[item.path];
@@ -580,7 +585,7 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
                               "flex w-4 h-5 items-center justify-center",
                             )}
                             <Text
-                              className="text-base"
+                              className="text-sm"
                               weight="medium"
                               style={{
                                 flex: 1,
@@ -608,7 +613,7 @@ const AdminPanelBar = ({ content }: AdminPanelBarProps) => {
                             transition={{ duration: 0.2 }}
                             style={{ overflow: "hidden" }}
                           >
-                            <Flex direction="column" className="ml-4 gap-1">
+                            <Flex direction="column" className="nav-sub gap-0.5">
                               {item.children.map((child: MenuItem) => (
                                 <SidebarItem
                                   key={child.path}
@@ -741,19 +746,9 @@ const SidebarItem = ({
         onClick={onClick}
         target={openInNewTab ? "_blank" : undefined}
         rel={openInNewTab ? "noopener noreferrer" : undefined}
-        className="group transition-colors duration-200 hover:bg-accent-3 rounded-md"
+        className="group"
       >
-        <Flex
-          className="p-2 gap-2 h-full"
-          align="center"
-          style={{
-            borderLeft: "4px solid transparent",
-            borderRadius: "6px",
-            backgroundColor: "transparent",
-            color: "inherit",
-            transition: "background-color 0.2s, border-color 0.2s",
-          }}
-        >
+        <Flex className="nav-pill gap-2" align="center">
           <span
             style={{
               color: "inherit",
@@ -763,7 +758,7 @@ const SidebarItem = ({
           >
             {icon}
           </span>
-          <Text className="text-base" weight="medium" style={{ flex: 1 }}>
+          <Text className="text-sm" weight="medium" style={{ flex: 1 }}>
             {children}
           </Text>
         </Flex>
@@ -774,9 +769,8 @@ const SidebarItem = ({
   return (
     <Link to={to} onClick={onClick} className="group">
       <Flex
-        className={`p-2 gap-2 nav-pill ${isActive ? "nav-pill-active" : ""}`}
+        className={`gap-2 nav-pill ${isActive ? "nav-pill-active" : ""}`}
         align="center"
-        style={{ borderRadius: "10px" }}
       >
         <span
           style={{ color: "inherit", opacity: isActive ? 1 : 0.7 }}
@@ -784,11 +778,7 @@ const SidebarItem = ({
         >
           {icon}
         </span>
-        <Text
-          className="text-base"
-          weight={isActive ? "bold" : "medium"}
-          style={{ flex: 1 }}
-        >
+        <Text className="text-sm" weight="medium" style={{ flex: 1 }}>
           {children}
         </Text>
       </Flex>

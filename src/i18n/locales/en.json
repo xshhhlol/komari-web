@@ -167,7 +167,11 @@
       "serviceName_placeholder": "Service name, leave empty to use the default name (komari-agent)",
       "setToLongTerm": "Set to Long term",
       "submit": "submit",
-      "submitting": "wait"
+      "submitting": "wait",
+      "summaryNodes": "{{count}} nodes",
+      "summaryGroups": "{{count}} groups",
+      "selectedCount": "{{count}} selected",
+      "noMatch": "No matching nodes"
     },
     "notification": {
       "expire_enable": "Enable Expiration Reminder",
@@ -204,7 +208,8 @@
       "save": "Save order",
       "saveSuccess": "Tag order saved",
       "empty": "No tags yet"
-    }
+    },
+    "logout": "Log out"
   },
   "cancel": "Cancel",
   "chart": {
@@ -907,7 +912,9 @@
     "uploading": "Uploading theme...",
     "uploda_413_content_too_large": "File upload failed (413). Please check and increase the file size limit in your reverse proxy server (such as Nginx/CDN) configuration (client_max_body_size) to ensure that this value is greater than your target file size.",
     "version": "Version",
-    "zip_files_only": "Only .zip files are supported"
+    "zip_files_only": "Only .zip files are supported",
+    "switch_to_light": "Switch to light",
+    "switch_to_dark": "Switch to dark"
   },
   "time": {
     "ago": "Ago",

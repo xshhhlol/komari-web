@@ -1,4 +1,5 @@
-/* 节点通知页（admin/notification/offline.tsx）。类名统一 nn- 前缀；颜色走 Radix 变量，深浅色自适应。 */
+/* 后台通用组件（nn- 前缀）：页头、按钮、搜索、表格卡片、浮动操作条、设置弹窗，以及顶栏样式。
+   由 AdminPanelBar 引入，所有后台页面可用；颜色走 Radix 变量，深浅色自适应。 */
 
 .nn-page {
   display: flex;
@@ -412,4 +413,163 @@
   justify-content: flex-end;
   gap: 8px;
   margin-top: 16px;
+}
+
+/* 顶栏：右侧图标按钮统一为细边浅底小方块，退出悬停变红。
+   前缀 .radix-themes 是为了压过 global.css 里中性 soft 按钮的规则（同等特异性时本文件更晚加载）。 */
+.nn-topbar {
+  border-bottom: 1px solid var(--gray-a4);
+}
+.radix-themes .nn-topbar .rt-IconButton.rt-variant-soft {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  color: var(--gray-11);
+  background-color: var(--color-panel-solid);
+  box-shadow: inset 0 0 0 1px var(--gray-a6), 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.radix-themes .nn-topbar .rt-IconButton.rt-variant-soft:hover {
+  color: var(--gray-12);
+  background-color: var(--gray-2);
+}
+.radix-themes .nn-topbar .rt-IconButton.rt-variant-soft svg {
+  color: inherit;
+}
+.radix-themes .nn-topbar .nn-logout:hover {
+  color: var(--red-11);
+}
+.nn-version {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--gray-11);
+  background: var(--gray-a3);
+  white-space: nowrap;
+}
+
+/* 用 ui/table（shadcn）组件的表格放进 .nn-table-card 后，统一成 nn-table 的样子 */
+.nn-table-card [data-slot="table-container"] {
+  overflow-x: auto;
+}
+.nn-table-card [data-slot="table"] {
+  background-color: transparent !important;
+  font-size: 13px;
+}
+.nn-table-card [data-slot="table-row"] {
+  border-bottom: 0;
+  transition: background-color 0.12s;
+}
+.nn-table-card [data-slot="table-header"] {
+  background: transparent !important;
+}
+/* ui/table 的表头用行内样式铺了 accent 底色，这里要 !important 才压得住 */
+.nn-table-card [data-slot="table-head"] {
+  height: auto;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-10);
+  background-color: var(--gray-a2) !important;
+  border-bottom: 1px solid var(--gray-a4);
+}
+.nn-table-card [data-slot="table-cell"] {
+  padding: 8px 12px;
+  color: var(--gray-12);
+  border-bottom: 1px solid var(--gray-a3);
+}
+.nn-table-card [data-slot="table-body"] [data-slot="table-row"]:hover {
+  background: var(--gray-a2);
+}
+.nn-table-card
+  [data-slot="table-body"]
+  [data-slot="table-row"][data-selected="true"] {
+  background: var(--accent-a2);
+}
+.nn-table-card
+  [data-slot="table-body"]
+  [data-slot="table-row"]:last-child
+  [data-slot="table-cell"] {
+  border-bottom: 0;
+}
+
+/* 表格里的操作图标：灰色，悬停加深；删除保持红色 */
+.nn-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.nn-table-card .rt-IconButton.rt-variant-ghost {
+  width: 30px;
+  height: 30px;
+  margin: 0;
+  color: var(--gray-10);
+}
+.nn-table-card .rt-IconButton.rt-variant-ghost:hover {
+  color: var(--gray-12);
+  background-color: var(--gray-a3);
+}
+.nn-table-card .rt-IconButton.rt-variant-ghost[data-accent-color="red"] {
+  color: var(--red-10);
+}
+.nn-table-card .rt-IconButton.rt-variant-ghost[data-accent-color="red"]:hover {
+  color: var(--red-11);
+  background-color: var(--red-a3);
+}
+
+/* 等宽 IP + 悬停才出现的复制按钮（无悬停的触屏设备上常显） */
+.nn-ip-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 20px;
+}
+.nn-ip-line + .nn-ip-line {
+  color: var(--gray-10);
+}
+.nn-ip-trunc {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nn-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: var(--gray-9);
+  cursor: pointer;
+  transition: opacity 0.12s, background-color 0.12s, color 0.12s;
+}
+.nn-copy:hover {
+  color: var(--gray-12);
+  background: var(--gray-a3);
+}
+@media (hover: hover) {
+  tr .nn-copy {
+    opacity: 0;
+  }
+  tr:hover .nn-copy {
+    opacity: 1;
+  }
+}
+.nn-drag {
+  display: inline-flex;
+  padding: 6px;
+  border-radius: 6px;
+  color: var(--gray-8);
+  cursor: grab;
+  transition: background-color 0.12s, color 0.12s;
+}
+.nn-drag:hover {
+  color: var(--gray-11);
+  background: var(--gray-a3);
 }

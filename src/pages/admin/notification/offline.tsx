@@ -35,7 +35,12 @@ import {
   getGroups,
   orderGroups,
 } from "@/utils/nodeGroups";
-import "./nodeNotify.css";
+import {
+  nodeMatchesKeywords,
+  parseKeywords,
+  pasteAsKeywords,
+  unmatchedKeywords,
+} from "@/utils/nodeSearch";
 
 const OFFLINE_ENDPOINT = "/api/admin/notification/offline";
 const CN_BLOCKED_ENDPOINT = "/api/admin/notification/offline/cn-blocked";
@@ -91,18 +96,6 @@ type EditTarget =
   | { kind: "node"; node: NodeDetail }
   | { kind: "batch"; uuids: string[] }
   | { kind: "defaults" };
-
-// 搜索关键字：空格、逗号、分号（含全角）分隔，多个之间是"或"。
-const parseKeywords = (search: string): string[] =>
-  search
-    .split(/[\s,;，；]+/)
-    .map((k) => k.trim().toLowerCase())
-    .filter(Boolean);
-
-const nodeMatches = (node: NodeDetail, keyword: string) =>
-  [node.name, node.ipv4, node.ipv6].some((v) =>
-    (v || "").toLowerCase().includes(keyword)
-  );
 
 // 过长的 IPv6 中间省略，悬停看全。
 const shortV6 = (ip: string) => {
@@ -242,8 +235,7 @@ const InnerLayout = () => {
   const filtered = React.useMemo(
     () =>
       nodes.filter((node) => {
-        if (keywords.length && !keywords.some((k) => nodeMatches(node, k)))
-          return false;
+        if (!nodeMatchesKeywords(node, keywords)) return false;
         const g = (node.group || "").trim();
         if (groupFilter === GROUP_UNGROUPED && g) return false;
         if (
@@ -263,10 +255,7 @@ const InnerLayout = () => {
   );
   // 一次搜多个时，列出在所有节点里都找不到的关键字，方便核对漏了哪台。
   const unmatched = React.useMemo(
-    () =>
-      keywords.length > 1
-        ? keywords.filter((k) => !nodes.some((n) => nodeMatches(n, k)))
-        : [],
+    () => unmatchedKeywords(nodes, keywords),
     [keywords, nodes]
   );
   const stats = React.useMemo(() => {
@@ -299,20 +288,6 @@ const InnerLayout = () => {
     setGroupFilter(GROUP_ALL);
     setOfflineFilter("all");
     setCnFilter("all");
-  };
-
-  // 粘贴多行（如一列 IP）时把换行换成空格：单行输入框会直接吞掉换行，把 IP 粘成一串。
-  const handleSearchPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const text = e.clipboardData.getData("text");
-    if (!/[\r\n]/.test(text)) return;
-    e.preventDefault();
-    const el = e.currentTarget;
-    const start = el.selectionStart ?? el.value.length;
-    const end = el.selectionEnd ?? start;
-    const cleaned = text.replace(/[\r\n]+/g, " ").trim();
-    setSearch(
-      `${el.value.slice(0, start)} ${cleaned} ${el.value.slice(end)}`.trim()
-    );
   };
 
   const runBatchSwitch = async (endpoint: string, enable: boolean) => {
@@ -418,7 +393,7 @@ const InnerLayout = () => {
                 "搜索名称或 IP，可粘贴多个"
               )}
               onChange={(e) => setSearch(e.target.value)}
-              onPaste={handleSearchPaste}
+              onPaste={(e) => pasteAsKeywords(e, setSearch)}
             />
           </div>
           <DropdownMenu.Root>

@@ -167,7 +167,11 @@
       "serviceName_placeholder": "服务名称，为空则使用默认名称(komari-agent)",
       "setToLongTerm": "设置为长期",
       "submit": "提交",
-      "submitting": "等待"
+      "submitting": "等待",
+      "summaryNodes": "{{count}} 个节点",
+      "summaryGroups": "{{count}} 个分组",
+      "selectedCount": "已选 {{count}}",
+      "noMatch": "没有符合条件的节点"
     },
     "notification": {
       "expire_enable": "是否启用过期提醒",
@@ -204,7 +208,8 @@
       "save": "保存顺序",
       "saveSuccess": "标签顺序已保存",
       "empty": "暂无标签"
-    }
+    },
+    "logout": "退出登录"
   },
   "cancel": "取消",
   "chart": {
@@ -907,7 +912,9 @@
     "uploading": "正在上传主题...",
     "uploda_413_content_too_large": "文件上传失败 (413)。请检查并增大您的反向代理服务器（如 Nginx/CDN）配置中的文件大小限制（client_max_body_size），确保该值大于您的目标文件大小。",
     "version": "版本",
-    "zip_files_only": "仅支持 .zip 格式"
+    "zip_files_only": "仅支持 .zip 格式",
+    "switch_to_light": "切换到浅色",
+    "switch_to_dark": "切换到深色"
   },
   "time": {
     "ago": "前",

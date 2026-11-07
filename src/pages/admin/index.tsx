@@ -142,7 +142,6 @@ const NodeDetailsPage = () => {
 const Layout = () => {
   const { nodeDetail, isLoading, error, refresh } = useNodeDetails();
   const { publicInfo } = usePublicInfo();
-  const [searchTerm, setSearchTerm] = useState("");
   const [groupFilter, setGroupFilter] = useState<string>(GROUP_ALL);
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
 
@@ -177,10 +176,8 @@ const Layout = () => {
     }
   }, [groups, groupFilter]);
 
+  // 不设搜索框：IP、名称都直接显示在页面上，用浏览器自带的查找即可
   const filteredNodes = nodes
-    .filter((node) =>
-      node.name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
     .filter((node) => {
       if (groupFilter === GROUP_ALL) return true;
       const g = (node.group || "").trim();
@@ -198,11 +195,11 @@ const Layout = () => {
   if (error) return <div>{error}</div>;
 
   return (
-    <Flex direction="column" gap="4" p="4">
+    <div className="nn-page md:p-4 p-1">
       <Header
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        selectedNodes={selectedNodes}
+        total={nodes.length}
+        groupCount={groups.length}
+        selectedCount={selectedNodes.length}
         groupFilter={groupFilter}
       />
 
@@ -222,19 +219,19 @@ const Layout = () => {
         selectedNodes={selectedNodes}
         setSelectedNodes={setSelectedNodes}
       />
-    </Flex>
+    </div>
   );
 };
 
 const Header = ({
-  searchTerm,
-  setSearchTerm,
-  selectedNodes,
+  total,
+  groupCount,
+  selectedCount,
   groupFilter,
 }: {
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  selectedNodes: string[];
+  total: number;
+  groupCount: number;
+  selectedCount: number;
   groupFilter: string;
 }) => {
   const { t } = useTranslation();
@@ -320,24 +317,35 @@ const Header = ({
     }
   };
   return (
-    <Flex justify="between" align="center" gap="4" wrap="wrap">
-      <Flex gap="2" align="center">
-        <Text size="5" weight="bold">
-          {t("admin.nodeTable.nodeList")}
-        </Text>
-        {selectedNodes.length > 0 && (
-          <Text size="2">({selectedNodes.length} selected)</Text>
-        )}
-      </Flex>
+    <div className="nn-header">
+      <div>
+        <div className="nn-title">{t("admin.nodeTable.nodeList")}</div>
+        <div className="nn-sub">
+          {t("admin.nodeTable.summaryNodes", {
+            count: total,
+            defaultValue: "{{count}} 个节点",
+          })}
+          {" · "}
+          {t("admin.nodeTable.summaryGroups", {
+            count: groupCount,
+            defaultValue: "{{count}} 个分组",
+          })}
+          {selectedCount > 0 && (
+            <>
+              {" · "}
+              <b>
+                {t("admin.nodeTable.selectedCount", {
+                  count: selectedCount,
+                  defaultValue: "已选 {{count}}",
+                })}
+              </b>
+            </>
+          )}
+        </div>
+      </div>
       <Flex gap="2" wrap="wrap">
         <GroupManageButton />
         <TagManageButton />
-        <TextField.Root
-          radius="full"
-          placeholder={t("admin.nodeTable.searchByName")}
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
         <Dialog.Root
           open={dialogOpen}
           onOpenChange={(o) => {
@@ -346,7 +354,7 @@ const Header = ({
           }}
         >
           <Dialog.Trigger>
-            <Button radius="full" onClick={() => setDialogOpen(true)}>
+            <Button onClick={() => setDialogOpen(true)}>
               <Plus size={16} />
               {t("admin.nodeTable.addNode")}
             </Button>
@@ -401,7 +409,7 @@ const Header = ({
           </Dialog.Content>
         </Dialog.Root>
       </Flex>
-    </Flex>
+    </div>
   );
 };
 
@@ -616,7 +624,7 @@ const GroupManageButton = () => {
       }}
     >
       <Dialog.Trigger>
-        <Button variant="soft" radius="full">
+        <Button variant="soft">
           <FolderCog size={16} />
           {t("admin.group.manage", "分组管理")}
         </Button>
@@ -795,7 +803,7 @@ const TagManageButton = () => {
       }}
     >
       <Dialog.Trigger>
-        <Button variant="soft" radius="full">
+        <Button variant="soft">
           <ListOrdered size={16} />
           {t("admin.tag.manage", "标签管理")}
         </Button>
@@ -875,12 +883,16 @@ const SortableRow = ({
     toast.success(t("copy_success"));
   }
   return (
-    <TableRow ref={setNodeRef} style={style} className="hover:bg-accent-a2">
+    <TableRow
+      ref={setNodeRef}
+      style={style}
+      data-selected={selectedNodes.includes(node.uuid)}
+    >
       <TableCell>
         <div
           {...attributes}
           {...listeners}
-          className={`cursor-move p-2 rounded hover:bg-accent-a3 transition-colors ${
+          className={`nn-drag ${
             isMobile ? "touch-manipulation select-none" : ""
           }`}
           style={{
@@ -894,7 +906,7 @@ const SortableRow = ({
               : undefined
           }
         >
-          <MenuIcon size={isMobile ? 18 : 16} color={"var(--gray-8)"} />
+          <MenuIcon size={isMobile ? 18 : 15} />
         </div>
       </TableCell>
       <TableCell>
@@ -907,42 +919,40 @@ const SortableRow = ({
         <DetailView node={node} />
       </TableCell>
       <TableCell>
-        <Flex direction="column">
-          {node.ipv4 && (
-            <Text size="2" className="flex items-center gap-1">
-              {node.ipv4}
-              <IconButton variant="ghost" onClick={() => copy(node.ipv4)}>
-                <Copy size="16" />
-              </IconButton>
-            </Text>
-          )}
-          {node.ipv6 && (
-            <Text
-              size="2"
-              className="flex items-center gap-1"
-              title={node.ipv6}
+        {node.ipv4 && (
+          <div className="nn-ip-line">
+            <span>{node.ipv4}</span>
+            <span
+              role="button"
+              className="nn-copy"
+              title={t("copy", "复制")}
+              onClick={() => copy(node.ipv4)}
             >
-              {node.ipv6.length > 20
-                ? (() => {
-                    const segments = node.ipv6.split(":");
-                    return segments.length > 3
-                      ? `${segments.slice(0, 2).join(":")}:...${
-                          segments[segments.length - 1]
-                        }`
-                      : node.ipv6;
-                  })()
-                : node.ipv6}
-              <IconButton variant="ghost" onClick={() => copy(node.ipv6)}>
-                <Copy size="16" />
-              </IconButton>
-            </Text>
-          )}
-        </Flex>
+              <Copy size={13} />
+            </span>
+          </div>
+        )}
+        {node.ipv6 && (
+          <div className="nn-ip-line" title={node.ipv6}>
+            {/* 完整地址留在页面里，浏览器查找能搜到；过长的视觉上省略 */}
+            <span className="nn-ip-trunc">{node.ipv6}</span>
+            <span
+              role="button"
+              className="nn-copy"
+              title={t("copy", "复制")}
+              onClick={() => copy(node.ipv6)}
+            >
+              <Copy size={13} />
+            </span>
+          </div>
+        )}
       </TableCell>
-      <TableCell>{node.version}</TableCell>
+      <TableCell>
+        <span className="nn-muted">{node.version}</span>
+      </TableCell>
       <TableCell>
         <Text
-          size="2"
+          className="nn-muted"
           title={node.group}
           style={{
             maxWidth: "150px",
@@ -958,7 +968,7 @@ const SortableRow = ({
       </TableCell>
       <TableCell>
         <Text
-          size="2"
+          className="nn-muted"
           title={node.public_remark}
           style={{
             maxWidth: "150px",
@@ -1071,12 +1081,7 @@ const NodeTable = ({
     );
   };
   return (
-    <div
-      className={`tech-table rounded-xl overflow-hidden ${
-        isDragging ? "select-none" : ""
-      }`}
-      style={{ border: "1px solid var(--accent-a4)" }}
-    >
+    <div className={`nn-table-card ${isDragging ? "select-none" : ""}`}>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -1084,21 +1089,20 @@ const NodeTable = ({
         onDragEnd={handleDragEnd}
       >
         <Table>
-          <TableHeader
-            style={{
-              background:
-                "linear-gradient(180deg, var(--accent-a3), var(--accent-a2))",
-            }}
-          >
+          <TableHeader>
             <TableRow>
               <TableHead></TableHead>
               <TableHead>
                 <Checkbox
                   checked={
-                    selectedNodes.length === localNodes.length &&
-                    localNodes.length > 0
+                    localNodes.length > 0 &&
+                    selectedNodes.length === localNodes.length
+                      ? true
+                      : selectedNodes.length > 0
+                      ? "indeterminate"
+                      : false
                   }
-                  onCheckedChange={handleSelectAll}
+                  onCheckedChange={(c) => handleSelectAll(c === true)}
                 />
               </TableHead>
               <TableHead>{t("admin.nodeTable.name")}</TableHead>
@@ -1111,6 +1115,13 @@ const NodeTable = ({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {localNodes.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={9} className="nn-empty">
+                  {t("admin.nodeTable.noMatch", "没有符合条件的节点")}
+                </TableCell>
+              </TableRow>
+            )}
             <SortableContext
               items={localNodes.map((node) => node.uuid)}
               strategy={verticalListSortingStrategy}
@@ -1136,7 +1147,7 @@ type Platform = "linux" | "windows" | "macos";
 const ActionButtons = ({ node, settings }: { node: NodeDetail, settings: any }) => {
   const { t } = useTranslation();
   return (
-    <div className="flex items-center gap-4">
+    <div className="nn-actions">
       <GenerateCommandButton node={node} settings={settings} />
       <IconButton
         title={t("terminal.title")}
@@ -2191,7 +2202,7 @@ function DetailView({ node }: { node: NodeDetail }) {
   return (
     <Drawer direction={isMobile ? "bottom" : "right"}>
       <DrawerTrigger asChild>
-        <div className="h-8 flex items-center hover:underline cursor-pointer font-bold text-base">
+        <div className="h-8 flex items-center gap-1 cursor-pointer font-medium transition-colors hover:text-[var(--accent-11)]">
           <Flag flag={node.region} size="6" />
           {node.name.length > 25 ? node.name.slice(0, 25) + "..." : node.name}
         </div>

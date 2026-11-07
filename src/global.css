@@ -174,70 +174,71 @@ body, * {
 }
 
 /* ============================================================
-   Modern / tech / lively admin skin
-   Everything derives from the Radix accent scale (fixed to
-   indigo, see ACCENT_COLOR in contexts/ThemeContext.ts).
+   Admin skin — restrained: neutral surfaces, thin borders, soft
+   shadows; accent (fixed to indigo, see ACCENT_COLOR in
+   contexts/ThemeContext.ts) only marks active / primary things.
+   Page-level nn-* components live in components/admin/admin-ui.css.
    ============================================================ */
 
-/* Ambient gradient-mesh background for the whole admin shell */
+/* Whole admin shell background */
 .app-bg {
-  position: relative;
-  background-color: var(--accent-1);
-  background-image:
-    radial-gradient(46rem 46rem at 108% -8%, var(--accent-a4), transparent 60%),
-    radial-gradient(40rem 40rem at -10% 112%, var(--accent-a3), transparent 58%),
-    radial-gradient(34rem 34rem at 92% 108%, color-mix(in srgb, var(--accent-a3), transparent 30%), transparent 60%);
-  background-attachment: fixed;
+  background-color: var(--gray-2);
 }
 .dark .app-bg {
-  background-color: color-mix(in srgb, var(--accent-1) 86%, black 14%);
+  background-color: var(--gray-1);
 }
 
-/* Frosted-glass surface (navbar / sidebar) */
+/* Frosted surface (navbar / mobile sidebar) */
 .glass {
-  background: color-mix(in srgb, var(--accent-1) 68%, transparent);
+  background: color-mix(in srgb, var(--color-panel-solid) 82%, transparent);
   backdrop-filter: blur(14px) saturate(140%);
   -webkit-backdrop-filter: blur(14px) saturate(140%);
 }
 
-/* Elevated translucent content card */
+/* Main content card */
 .surface-card {
-  background: color-mix(in srgb, var(--accent-1) 82%, transparent);
-  border: 1px solid var(--accent-a4);
-  border-radius: 18px;
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-a4);
+  border-radius: 14px;
   box-shadow:
-    0 1px 2px var(--accent-a3),
-    0 18px 40px -24px var(--accent-a7);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+    0 1px 2px rgb(0 0 0 / 0.04),
+    0 12px 32px -22px rgb(0 0 0 / 0.18);
+}
+.dark .surface-card {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
 }
 
-/* Gradient brand wordmark */
+/* Brand wordmark */
 .brand-wordmark {
-  background: linear-gradient(120deg, var(--accent-11), var(--accent-9) 60%, var(--accent-10));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--accent-11);
   letter-spacing: -0.02em;
 }
 
-/* Active sidebar item: gradient pill with accent glow */
-.nav-pill-active {
-  background: linear-gradient(135deg, var(--accent-9), var(--accent-10));
-  color: var(--accent-contrast);
-  box-shadow: 0 8px 20px -8px var(--accent-a9);
-}
+/* Sidebar items: gray text, light gray hover, active = soft accent tint */
 .nav-pill {
-  transition: background-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  padding: 7px 10px;
+  border-radius: 8px;
+  color: var(--gray-11);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .nav-pill:hover {
-  background: var(--accent-a3);
+  background: var(--gray-a3);
+  color: var(--gray-12);
 }
+.nav-pill-active,
 .nav-pill-active:hover {
-  background: linear-gradient(135deg, var(--accent-9), var(--accent-10));
+  background: var(--accent-a3);
+  color: var(--accent-11);
 }
-.nav-pill-active svg {
-  color: var(--accent-contrast) !important;
+.nav-pill svg {
+  color: inherit !important;
+}
+/* Sub-menu: indented with a thin guide line */
+.nav-sub {
+  margin: 2px 0 4px 17px;
+  padding-left: 8px;
+  border-left: 1px solid var(--gray-a4);
 }
 
 /* Group filter pills */
@@ -287,77 +288,66 @@ body, * {
   color: var(--accent-11);
 }
 
-/* Lively table rows */
-.tech-table tbody tr {
-  transition: background-color 0.16s ease, box-shadow 0.16s ease;
-}
-.tech-table tbody tr:hover {
-  background: var(--accent-a2);
-}
-
 /* ============================================================
-   Lively buttons, icon buttons & inputs
-   Scoped under `.radix-themes` so these reliably override the
-   Radix Themes base styles (global.css is imported before
-   styles.css) while still inheriting each control's accent
-   color, so everything follows the accent scale.
+   Radix buttons / inputs, restyled to match the nn-btn look.
+   Scoped under `.radix-themes` so these override Radix base styles.
    ============================================================ */
-
-/* Crisp, flat button feedback — no floating lift, no drop-shadow glow.
-   Hover just deepens the fill/ring; press gives a tiny scale. */
 .radix-themes .rt-BaseButton {
   transition:
-    background-color 0.16s ease,
-    box-shadow 0.16s ease,
-    filter 0.16s ease,
+    background-color 0.15s ease,
+    background-image 0.15s ease,
+    box-shadow 0.15s ease,
+    color 0.15s ease,
     transform 0.09s ease;
 }
 .radix-themes .rt-BaseButton:not(:disabled):active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }
 
-/* Solid buttons (primary actions): flat accent gradient, gentle brighten. */
+/* Solid (primary): vertical accent gradient + inner top highlight; hover darkens */
 .radix-themes .rt-BaseButton.rt-variant-solid {
-  background-image: linear-gradient(135deg, var(--accent-9), var(--accent-10));
+  background-image: linear-gradient(180deg, var(--accent-9), var(--accent-10));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    0 1px 2px rgb(0 0 0 / 0.12);
 }
 .radix-themes .rt-BaseButton.rt-variant-solid:not(:disabled):hover {
-  filter: brightness(1.06);
+  background-image: linear-gradient(180deg, var(--accent-10), var(--accent-10));
 }
-/* While disabled (e.g. the "Installing…" state) our gradient stays
-   painted on, so Radix's muted gray text/icon become unreadable.
-   Keep the high-contrast accent foreground; dim the whole button to
-   still read as disabled. */
+/* While disabled (e.g. "Installing…") keep the foreground readable. */
 .radix-themes .rt-BaseButton.rt-variant-solid:disabled {
   color: var(--accent-contrast);
   opacity: 0.7;
 }
 
-/* Soft icon buttons (top toolbar): frosted chip, ring deepens on hover. */
-.radix-themes .rt-IconButton.rt-variant-soft {
-  border-radius: 11px;
-  box-shadow: inset 0 0 0 1px var(--accent-a4);
+/* Soft without an explicit color (Radix renders data-accent-color=""): neutral, thin border, slight lift */
+.radix-themes .rt-BaseButton.rt-variant-soft[data-accent-color=""] {
+  background-color: var(--color-panel-solid);
+  color: var(--gray-12);
+  box-shadow:
+    inset 0 0 0 1px var(--gray-a6),
+    0 1px 2px rgb(0 0 0 / 0.05);
 }
-.radix-themes .rt-IconButton.rt-variant-soft:not(:disabled):hover {
-  box-shadow: inset 0 0 0 1px var(--accent-a7);
+.radix-themes .rt-BaseButton.rt-variant-soft[data-accent-color=""]:not(:disabled):hover {
+  background-color: var(--gray-2);
+  box-shadow:
+    inset 0 0 0 1px var(--gray-a7),
+    0 1px 2px rgb(0 0 0 / 0.05);
 }
-
-/* Soft text buttons (e.g. Manage Groups / Manage Tags): a 1px ring gives the
-   pill definition; hover deepens the ring instead of floating it. */
-.radix-themes .rt-Button.rt-variant-soft {
+.radix-themes .rt-BaseButton.rt-variant-soft[data-accent-color=""] svg {
+  color: var(--gray-11);
+}
+/* Soft with a color (gray cancel, red danger…): a thin ring of its own color */
+.radix-themes .rt-BaseButton.rt-variant-soft:not([data-accent-color=""]) {
   box-shadow: inset 0 0 0 1px var(--accent-a5);
 }
-.radix-themes .rt-Button.rt-variant-soft:not(:disabled):hover {
-  box-shadow: inset 0 0 0 1px var(--accent-a8);
-}
 
-/* Ghost buttons: rounder hit area */
 .radix-themes .rt-IconButton.rt-variant-ghost {
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
-/* Search / text inputs: rounder with a smooth focus glow */
+/* Text inputs: smooth focus ring */
 .radix-themes .rt-TextFieldRoot {
-  border-radius: 11px;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .radix-themes .rt-TextFieldRoot:focus-within {
