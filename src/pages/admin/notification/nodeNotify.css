@@ -1,0 +1,415 @@
+/* 节点通知页（admin/notification/offline.tsx）。类名统一 nn- 前缀；颜色走 Radix 变量，深浅色自适应。 */
+
+.nn-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* 页头 */
+.nn-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.nn-title {
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--gray-12);
+  line-height: 1.2;
+}
+.nn-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--gray-10);
+}
+.nn-sub b {
+  font-weight: 600;
+  color: var(--gray-12);
+}
+
+/* 按钮：浅底 + 细边 + 顶部内高光，有一点按压感 */
+.nn-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--gray-12);
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-a6);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05), inset 0 1px 0 rgb(255 255 255 / 0.7);
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.nn-btn:hover {
+  background: var(--gray-2);
+  border-color: var(--gray-a7);
+}
+.nn-btn:active {
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.08);
+}
+.nn-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.nn-btn svg {
+  color: var(--gray-11);
+}
+.nn-btn[data-active="true"] {
+  color: var(--accent-11);
+  border-color: var(--accent-a7);
+  background: var(--accent-a2);
+}
+.nn-btn[data-active="true"] svg {
+  color: var(--accent-11);
+}
+.nn-btn-primary {
+  color: var(--accent-contrast);
+  background: linear-gradient(180deg, var(--accent-9), var(--accent-10));
+  border-color: var(--accent-10);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+.nn-btn-primary:hover {
+  background: linear-gradient(180deg, var(--accent-10), var(--accent-10));
+  border-color: var(--accent-10);
+}
+.nn-btn-primary svg {
+  color: inherit;
+}
+.dark .nn-btn {
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3), inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+.nn-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-contrast);
+  background: var(--accent-9);
+}
+
+/* 工具栏 */
+.nn-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.nn-search {
+  position: relative;
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+.nn-search > svg {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--gray-10);
+  pointer-events: none;
+}
+.nn-search input {
+  width: 100%;
+  height: 34px;
+  padding: 0 12px 0 34px;
+  border-radius: 9px;
+  font-size: 13px;
+  color: var(--gray-12);
+  background: var(--gray-a2);
+  border: 1px solid var(--gray-a5);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+.nn-search input::placeholder {
+  color: var(--gray-9);
+}
+.nn-search input:focus {
+  background: var(--color-panel-solid);
+  border-color: var(--accent-8);
+  box-shadow: 0 0 0 3px var(--accent-a4);
+}
+.nn-count {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--gray-10);
+  white-space: nowrap;
+}
+.nn-link {
+  margin-left: 8px;
+  color: var(--accent-11);
+  font-weight: 500;
+  cursor: pointer;
+}
+.nn-link:hover {
+  text-decoration: underline;
+}
+.nn-missing {
+  font-size: 12.5px;
+  color: var(--red-11);
+}
+.nn-missing code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+/* 表格 */
+.nn-table-card {
+  border: 1px solid var(--gray-a5);
+  border-radius: 12px;
+  background: var(--color-panel-solid);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 10px 28px -16px rgb(0 0 0 / 0.12);
+  overflow: hidden;
+}
+.nn-table-scroll {
+  overflow-x: auto;
+}
+.nn-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.nn-table th {
+  padding: 9px 14px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-10);
+  white-space: nowrap;
+  background: var(--gray-a2);
+  border-bottom: 1px solid var(--gray-a4);
+}
+.nn-table td {
+  padding: 9px 14px;
+  vertical-align: middle;
+  color: var(--gray-12);
+  border-bottom: 1px solid var(--gray-a3);
+  white-space: nowrap;
+}
+.nn-table tbody tr {
+  transition: background-color 0.12s;
+}
+.nn-table tbody tr:hover {
+  background: var(--gray-a2);
+}
+.nn-table tbody tr[data-selected="true"] {
+  background: var(--accent-a2);
+}
+.nn-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.nn-col-check {
+  width: 40px;
+  padding-right: 0 !important;
+}
+.nn-col-action {
+  width: 48px;
+  text-align: right !important;
+}
+.nn-name {
+  font-weight: 500;
+}
+.nn-ip {
+  margin-top: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--gray-10);
+}
+.nn-ip span + span::before {
+  content: "·";
+  margin: 0 6px;
+  color: var(--gray-8);
+}
+.nn-muted {
+  color: var(--gray-10);
+}
+.nn-empty {
+  padding: 40px 16px !important;
+  text-align: center;
+  color: var(--gray-10);
+}
+.nn-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: var(--gray-10);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+.nn-icon-btn:hover {
+  color: var(--gray-12);
+  background: var(--gray-a3);
+}
+
+/* 选中后浮出的批量操作条。浅色模式：浅色磨砂；深色模式：深石板渐变 + 顶部内高光，悬停加深。 */
+.nn-bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 20;
+  align-self: center;
+  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  overflow-x: auto;
+  border-radius: 14px;
+  color: var(--gray-12);
+  background: color-mix(in srgb, var(--color-panel-solid) 90%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--gray-a6);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 14px 34px -12px rgb(0 0 0 / 0.25);
+  animation: nn-bar-in 0.18s ease-out;
+}
+@keyframes nn-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.nn-bar-count {
+  padding: 0 10px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.nn-bar-sep {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--gray-a5);
+}
+.nn-bar-label {
+  padding: 0 4px 0 6px;
+  font-size: 12px;
+  color: var(--gray-10);
+  white-space: nowrap;
+}
+.nn-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--gray-12);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+.nn-bar-btn svg {
+  color: var(--accent-11);
+}
+.nn-bar-btn:hover {
+  background: var(--gray-a3);
+}
+.nn-bar-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.dark .nn-bar {
+  color: #f1f5f9;
+  background: linear-gradient(180deg, #334155, #1e293b);
+  backdrop-filter: none;
+  border-color: #0f172a;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 14px 34px -10px rgb(0 0 0 / 0.6);
+}
+.dark .nn-bar-sep {
+  background: rgb(255 255 255 / 0.14);
+}
+.dark .nn-bar-label {
+  color: #94a3b8;
+}
+.dark .nn-bar-btn {
+  color: #e2e8f0;
+}
+.dark .nn-bar-btn svg {
+  color: #7dd3fc;
+}
+.dark .nn-bar-btn:hover {
+  background: rgb(2 6 23 / 0.35);
+}
+
+/* 对话框里的设置行：左边说明，右边控件 */
+.nn-form {
+  display: flex;
+  flex-direction: column;
+}
+.nn-form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--gray-a3);
+}
+.nn-form-row:last-of-type {
+  border-bottom: 0;
+}
+.nn-form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--gray-12);
+}
+.nn-form-desc {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--gray-10);
+}
+.nn-num {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--gray-a6);
+  background: var(--color-panel-solid);
+  overflow: hidden;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.nn-num:focus-within {
+  border-color: var(--accent-8);
+  box-shadow: 0 0 0 3px var(--accent-a4);
+}
+.nn-num input {
+  width: 64px;
+  height: 100%;
+  padding: 0 8px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--gray-12);
+  background: transparent;
+  outline: none;
+}
+.nn-num span {
+  padding: 0 10px 0 2px;
+  font-size: 12px;
+  color: var(--gray-10);
+}
+.nn-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}

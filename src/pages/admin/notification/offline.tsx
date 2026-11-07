@@ -1,13 +1,5 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   NodeDetailsProvider,
   useNodeDetails,
   type NodeDetail,
@@ -19,21 +11,22 @@ import {
 } from "@/contexts/NotificationContext";
 import { usePublicInfo } from "@/contexts/PublicInfoContext";
 import React from "react";
-import { Pencil, Search } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import {
-  Button,
-  Dialog,
-  Flex,
-  IconButton,
-  Select,
-  Switch,
-  Text,
-  TextField,
-} from "@radix-ui/themes";
+  Bell,
+  BellOff,
+  ListFilter,
+  Pencil,
+  Search,
+  ShieldCheck,
+  ShieldOff,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
+import { Dialog, DropdownMenu, Switch } from "@radix-ui/themes";
 import { toast } from "sonner";
 import Loading from "@/components/loading";
-import Tips from "@/components/ui/tips";
 import { GroupFilterPills } from "@/components/admin/GroupFilterPills";
 import { updateSettingsWithToast, useSettings } from "@/lib/api";
 import {
@@ -42,6 +35,7 @@ import {
   getGroups,
   orderGroups,
 } from "@/utils/nodeGroups";
+import "./nodeNotify.css";
 
 const OFFLINE_ENDPOINT = "/api/admin/notification/offline";
 const CN_BLOCKED_ENDPOINT = "/api/admin/notification/offline/cn-blocked";
@@ -58,7 +52,6 @@ const OfflinePage = () => {
 
 type EditValues = {
   enable: boolean;
-  cooldown: number;
   grace_period: number;
   // 被墙通知是否开启（界面用正向开关，提交时转成后端的 cn_blocked_muted）
   cn_blocked: boolean;
@@ -67,7 +60,6 @@ type EditValues = {
 // 与后端内置默认一致；后台设置读到之前先用它。
 const BUILTIN_DEFAULTS: EditValues = {
   enable: false,
-  cooldown: 1800,
   grace_period: 180,
   cn_blocked: true,
 };
@@ -80,7 +72,6 @@ const configOf = (
   n
     ? {
         enable: n.enable,
-        cooldown: n.cooldown ?? defaults.cooldown,
         grace_period: n.grace_period || defaults.grace_period,
         cn_blocked: !n.cn_blocked_muted,
       }
@@ -89,12 +80,17 @@ const configOf = (
 const toEditPayload = (client: string, v: EditValues) => ({
   client,
   enable: v.enable,
-  cooldown: v.cooldown,
   grace_period: v.grace_period,
   cn_blocked_muted: !v.cn_blocked,
 });
 
 type StatusFilter = "all" | "on" | "off";
+
+// 编辑对话框：单个节点 / 批量 / 新节点默认，共用一个表单。
+type EditTarget =
+  | { kind: "node"; node: NodeDetail }
+  | { kind: "batch"; uuids: string[] }
+  | { kind: "defaults" };
 
 // 搜索关键字：空格、逗号、分号（含全角）分隔，多个之间是"或"。
 const parseKeywords = (search: string): string[] =>
@@ -108,223 +104,56 @@ const nodeMatches = (node: NodeDetail, keyword: string) =>
     (v || "").toLowerCase().includes(keyword)
   );
 
-const NotificationEditForm = ({
-  initialValues,
-  onSubmit,
-  loading,
-  onCancel,
-}: {
-  initialValues: EditValues;
-  onSubmit: (values: EditValues) => void;
-  loading?: boolean;
-  onCancel?: () => void;
-}) => {
-  const { t } = useTranslation();
-  const [enabled, setEnabled] = React.useState(initialValues.enable);
-  const [cnBlocked, setCnBlocked] = React.useState(initialValues.cn_blocked);
-  const [grace, setGrace] = React.useState(initialValues.grace_period);
-  return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit({
-          enable: enabled,
-          cooldown: 3000,
-          grace_period: grace,
-          cn_blocked: cnBlocked,
-        });
-      }}
-      className="flex flex-col gap-2"
-    >
-      <label htmlFor="status">
-        {t("notification.offline.offline_switch", "离线 / 上线通知")}
-      </label>
-      <Switch
-        id="status"
-        name="status"
-        checked={enabled}
-        onCheckedChange={setEnabled}
-      />
-      <label htmlFor="cn_blocked" className="flex items-center gap-2">
-        {t("notification.offline.cn_blocked_switch", "被墙通知")}
-        <Tips>
-          {t(
-            "notification.offline.cn_blocked_tip",
-            "关闭后，该节点被墙、恢复、被墙期间掉线都不再推送；面板上的被墙标记照常显示。"
-          )}
-        </Tips>
-      </label>
-      <Switch
-        id="cn_blocked"
-        name="cn_blocked"
-        checked={cnBlocked}
-        onCheckedChange={setCnBlocked}
-      />
-      <label htmlFor="grace_period" className="flex items-center gap-2">
-        {t("notification.offline.grace_period")}
-        <Tips>{t("notification.offline.grace_period_tip")}</Tips>
-      </label>
-      <TextField.Root
-        type="number"
-        min={1}
-        value={grace}
-        onChange={(e) => setGrace(Number(e.target.value))}
-        id="grace_period"
-        name="grace_period"
-      />
-      <Flex gap="2" justify="end" className="mt-4">
-        {onCancel && (
-          <Dialog.Close>
-            <Button
-              variant="soft"
-              color="gray"
-              type="button"
-              onClick={onCancel}
-            >
-              {t("common.cancel")}
-            </Button>
-          </Dialog.Close>
-        )}
-        <Button variant="solid" type="submit" disabled={loading}>
-          {t("common.save")}
-        </Button>
-      </Flex>
-    </form>
-  );
+// 过长的 IPv6 中间省略，悬停看全。
+const shortV6 = (ip: string) => {
+  const segments = ip.split(":");
+  return ip.length > 20 && segments.length > 3
+    ? `${segments.slice(0, 2).join(":")}:…${segments[segments.length - 1]}`
+    : ip;
 };
 
-// DefaultsCard 编辑「新节点默认」：开关立即保存，宽限期失焦 / 回车时保存。
-const DefaultsCard = ({
-  defaults,
-  onChange,
-}: {
-  defaults: EditValues;
-  onChange: (next: EditValues) => void;
-}) => {
-  const { t } = useTranslation();
-  const [grace, setGrace] = React.useState(String(defaults.grace_period));
-  React.useEffect(
-    () => setGrace(String(defaults.grace_period)),
-    [defaults.grace_period]
-  );
-
-  const save = async (patch: Record<string, unknown>, next: EditValues) => {
-    try {
-      await updateSettingsWithToast(patch, t);
-      onChange(next);
-    } catch {
-      // updateSettingsWithToast 已提示错误；界面保持原值
-    }
-  };
-  const saveGrace = () => {
-    const v = Math.floor(Number(grace));
-    if (!Number.isFinite(v) || v <= 0) {
-      setGrace(String(defaults.grace_period));
-      return;
-    }
-    if (v === defaults.grace_period) return;
-    save(
-      { offline_notification_default_grace_period: v },
-      { ...defaults, grace_period: v }
-    );
-  };
-
-  return (
-    <div className="rounded-lg border border-[var(--gray-a5)] p-3 flex flex-col gap-2">
-      <Flex align="center" gap="2">
-        <Text size="2" weight="bold">
-          {t("notification.offline.defaults_title", "新节点默认")}
-        </Text>
-        <Tips>
-          {t(
-            "notification.offline.defaults_tip",
-            "作用于新加入、还没单独设置过的节点。已经设置过的节点不受影响，如需统一调整，可筛选后全选再批量操作。"
-          )}
-        </Tips>
-      </Flex>
-      <Flex gap="5" align="center" wrap="wrap">
-        <Text as="label" size="2" className="flex items-center gap-2">
-          <Switch
-            checked={defaults.enable}
-            onCheckedChange={(v) =>
-              save(
-                { offline_notification_default_enabled: v },
-                { ...defaults, enable: v }
-              )
-            }
-          />
-          {t("notification.offline.offline_switch", "离线 / 上线通知")}
-        </Text>
-        <Text as="label" size="2" className="flex items-center gap-2">
-          <Switch
-            checked={defaults.cn_blocked}
-            onCheckedChange={(v) =>
-              save(
-                { cn_blocked_notification_default_enabled: v },
-                { ...defaults, cn_blocked: v }
-              )
-            }
-          />
-          {t("notification.offline.cn_blocked_switch", "被墙通知")}
-        </Text>
-        <Text as="label" size="2" className="flex items-center gap-2">
-          {t("notification.offline.grace_period")}
-          <TextField.Root
-            type="number"
-            min={1}
-            className="w-24"
-            value={grace}
-            onChange={(e) => setGrace(e.target.value)}
-            onBlur={saveGrace}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-            }}
-          >
-            <TextField.Slot side="right">
-              {t("nodeCard.time_second")}
-            </TextField.Slot>
-          </TextField.Root>
-        </Text>
-      </Flex>
-    </div>
-  );
+// 最后通知时间用相对时间，悬停看完整时间；后端的零值时间视为从未通知。
+const relativeTime = (iso: string | undefined, t: TFunction) => {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime()) || date.getFullYear() < 3) return null;
+  const sec = (Date.now() - date.getTime()) / 1000;
+  const text =
+    sec < 60
+      ? t("notification.offline.just_now", "刚刚")
+      : sec < 3600
+      ? t("notification.offline.minutes_ago", {
+          count: Math.floor(sec / 60),
+          defaultValue: "{{count}} 分钟前",
+        })
+      : sec < 86400
+      ? t("notification.offline.hours_ago", {
+          count: Math.floor(sec / 3600),
+          defaultValue: "{{count}} 小时前",
+        })
+      : sec < 86400 * 30
+      ? t("notification.offline.days_ago", {
+          count: Math.floor(sec / 86400),
+          defaultValue: "{{count}} 天前",
+        })
+      : date.toLocaleDateString();
+  return { text, full: date.toLocaleString() };
 };
 
-const StatusSelect = ({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: StatusFilter;
-  onChange: (v: StatusFilter) => void;
-}) => {
-  const { t } = useTranslation();
-  return (
-    <Flex align="center" gap="2">
-      <Text size="2" color="gray">
-        {label}
-      </Text>
-      <Select.Root
-        value={value}
-        onValueChange={(v) => onChange(v as StatusFilter)}
-      >
-        <Select.Trigger className="min-w-20" />
-        <Select.Content>
-          <Select.Item value="all">
-            {t("notification.offline.filter_all", "全部")}
-          </Select.Item>
-          <Select.Item value="on">
-            {t("notification.offline.filter_on", "已开启")}
-          </Select.Item>
-          <Select.Item value="off">
-            {t("notification.offline.filter_off", "已关闭")}
-          </Select.Item>
-        </Select.Content>
-      </Select.Root>
-    </Flex>
-  );
+const postJSON = async (url: string, body: unknown) => {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.message || res.statusText);
+  }
 };
+
+const errorText = (error: unknown) =>
+  error instanceof Error ? error.message : String(error);
 
 const InnerLayout = () => {
   const {
@@ -347,12 +176,10 @@ const InnerLayout = () => {
   const [offlineFilter, setOfflineFilter] = React.useState<StatusFilter>("all");
   const [cnFilter, setCnFilter] = React.useState<StatusFilter>("all");
   const [selected, setSelected] = React.useState<string[]>([]);
-  const [batchLoading, setBatchLoading] = React.useState(false);
-  const [batchDialogOpen, setBatchDialogOpen] = React.useState(false);
-  const [batchForm, setBatchForm] =
-    React.useState<EditValues>(BUILTIN_DEFAULTS);
+  const [batchBusy, setBatchBusy] = React.useState(false);
+  const [editing, setEditing] = React.useState<EditTarget | null>(null);
 
-  // 新节点默认：设置读到后以它为准；之后的修改由 DefaultsCard 回写本地。
+  // 新节点默认：设置读到后以它为准；之后在对话框里改了就以本地为准。
   const [defaultsOverride, setDefaultsOverride] =
     React.useState<EditValues | null>(null);
   const defaults: EditValues = React.useMemo(() => {
@@ -360,7 +187,6 @@ const InnerLayout = () => {
     if (settingsLoading) return BUILTIN_DEFAULTS;
     const grace = Number(settings.offline_notification_default_grace_period);
     return {
-      ...BUILTIN_DEFAULTS,
       enable:
         settings.offline_notification_default_enabled ??
         BUILTIN_DEFAULTS.enable,
@@ -443,6 +269,16 @@ const InnerLayout = () => {
         : [],
     [keywords, nodes]
   );
+  const stats = React.useMemo(() => {
+    let offline = 0;
+    let cn = 0;
+    for (const n of nodes) {
+      const v = valuesOf(n.uuid);
+      if (v.enable) offline++;
+      if (v.cn_blocked) cn++;
+    }
+    return { offline, cn };
+  }, [nodes, valuesOf]);
 
   // 选择只保留当前筛选结果里的节点，批量操作不会误伤看不见的节点。
   const filteredKey = filtered.map((n) => n.uuid).join(",");
@@ -454,11 +290,10 @@ const InnerLayout = () => {
     });
   }, [filteredKey]);
 
+  const statusFilterCount =
+    (offlineFilter !== "all" ? 1 : 0) + (cnFilter !== "all" ? 1 : 0);
   const filtersActive =
-    keywords.length > 0 ||
-    groupFilter !== GROUP_ALL ||
-    offlineFilter !== "all" ||
-    cnFilter !== "all";
+    keywords.length > 0 || groupFilter !== GROUP_ALL || statusFilterCount > 0;
   const clearFilters = () => {
     setSearch("");
     setGroupFilter(GROUP_ALL);
@@ -482,17 +317,9 @@ const InnerLayout = () => {
 
   const runBatchSwitch = async (endpoint: string, enable: boolean) => {
     const uuids = [...selected];
-    setBatchLoading(true);
+    setBatchBusy(true);
     try {
-      const res = await fetch(`${endpoint}/${enable ? "enable" : "disable"}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(uuids),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(data?.message || res.statusText);
-      }
+      await postJSON(`${endpoint}/${enable ? "enable" : "disable"}`, uuids);
       await refresh();
       toast.success(
         t("notification.offline.batch_done", {
@@ -501,45 +328,40 @@ const InnerLayout = () => {
         })
       );
     } catch (error) {
-      toast.error(
-        t("common.error", {
-          message: error instanceof Error ? error.message : String(error),
-        })
-      );
+      toast.error(t("common.error", { message: errorText(error) }));
     } finally {
-      setBatchLoading(false);
+      setBatchBusy(false);
     }
   };
 
-  // 批量修改
-  const handleBatchEdit = (values: EditValues) => {
-    setBatchLoading(true);
-    const payload = selected.map((id) => toEditPayload(id, values));
-    fetch(`${OFFLINE_ENDPOINT}/edit`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-      .then((res) => {
-        if (!res.ok) {
-          toast.error(
-            "Failed to update offline notifications: " + res.statusText
-          );
-        } else {
-          toast.success(t("common.updated_successfully"));
-        }
-        return res.json();
-      })
-      .then(() => {
-        setBatchLoading(false);
-        setBatchDialogOpen(false);
-        refresh();
-      })
-      .catch((error) => {
-        console.error("Error updating offline notifications:", error);
-        toast.error(t("common.error", { message: error.message }));
-        setBatchLoading(false);
-      });
+  const saveEdit = async (target: EditTarget, values: EditValues) => {
+    try {
+      if (target.kind === "defaults") {
+        await updateSettingsWithToast(
+          {
+            offline_notification_default_enabled: values.enable,
+            offline_notification_default_grace_period: values.grace_period,
+            cn_blocked_notification_default_enabled: values.cn_blocked,
+          },
+          t
+        );
+        setDefaultsOverride(values);
+      } else {
+        const uuids =
+          target.kind === "node" ? [target.node.uuid] : target.uuids;
+        await postJSON(
+          `${OFFLINE_ENDPOINT}/edit`,
+          uuids.map((id) => toEditPayload(id, values))
+        );
+        await refresh();
+        toast.success(t("common.updated_successfully"));
+      }
+      setEditing(null);
+    } catch (error) {
+      // 设置保存失败时 updateSettingsWithToast 已提示
+      if (target.kind !== "defaults")
+        toast.error(t("common.error", { message: errorText(error) }));
+    }
   };
 
   if (onLoading || onNodeLoading) {
@@ -548,237 +370,281 @@ const InnerLayout = () => {
   if (onError || onNodeError) {
     return <div>Error: {onError?.message || onNodeError}</div>;
   }
-  const noneSelected = selected.length === 0 || batchLoading;
+
+  const allUUIDs = filtered.map((n) => n.uuid);
+  const toggleMany = (uuids: string[], checked: boolean) => {
+    const rest = selected.filter((id) => !uuids.includes(id));
+    setSelected(checked ? [...rest, ...uuids] : rest);
+  };
+
   return (
-    <div className="flex flex-col gap-4 md:p-4 p-1">
-      <label className="text-2xl font-semibold">
-        {t("notification.offline.full_title", "节点通知设置")}
-      </label>
-
-      <DefaultsCard defaults={defaults} onChange={setDefaultsOverride} />
-
-      <Flex gap="3" align="center" wrap="wrap">
-        <TextField.Root
-          type="text"
-          className="w-full sm:w-80"
-          placeholder={t(
-            "notification.offline.search_placeholder",
-            "名称 / IP，多个用空格或逗号分隔"
-          )}
-          value={search}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setSearch(e.target.value)
-          }
-          onPaste={handleSearchPaste}
+    <div className="nn-page md:p-4 p-1">
+      <div className="nn-header">
+        <div>
+          <div className="nn-title">
+            {t("notification.offline.full_title", "节点通知")}
+          </div>
+          <div className="nn-sub">
+            {t("notification.offline.summary_total", {
+              count: nodes.length,
+              defaultValue: "{{count}} 个节点",
+            })}
+            {" · "}
+            {t("notification.offline.col_offline", "离线通知")}{" "}
+            <b>{stats.offline}</b>
+            {" · "}
+            {t("notification.offline.col_cn", "被墙通知")} <b>{stats.cn}</b>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="nn-btn"
+          onClick={() => setEditing({ kind: "defaults" })}
         >
-          <TextField.Slot>
-            <Search size={16} />
-          </TextField.Slot>
-        </TextField.Root>
-        <StatusSelect
-          label={t("notification.offline.offline_switch", "离线 / 上线通知")}
-          value={offlineFilter}
-          onChange={setOfflineFilter}
-        />
-        <StatusSelect
-          label={t("notification.offline.cn_blocked_switch", "被墙通知")}
-          value={cnFilter}
-          onChange={setCnFilter}
-        />
-      </Flex>
+          <SlidersHorizontal size={15} />
+          {t("notification.offline.defaults_button", "默认设置")}
+        </button>
+      </div>
 
-      {(groups.length > 0 || ungroupedCount > 0) && (
-        <GroupFilterPills
-          groups={groups}
-          counts={groupCounts}
-          total={nodes.length}
-          ungroupedCount={ungroupedCount}
-          groupFilter={groupFilter}
-          setGroupFilter={setGroupFilter}
-        />
-      )}
-
-      {unmatched.length > 0 && (
-        <Text size="2" color="red">
-          {t("notification.offline.not_found", {
-            count: unmatched.length,
-            list: unmatched.join(", "),
-            defaultValue: "未找到 {{count}} 个：{{list}}",
-          })}
-        </Text>
-      )}
-
-      <Flex gap="2" align="center" wrap="wrap">
-        <Text size="2" color="gray">
-          {t("notification.offline.showing", {
-            shown: filtered.length,
-            total: nodes.length,
-            defaultValue: "显示 {{shown}} / 共 {{total}} 个节点",
-          })}
-          {" · "}
-          {t("common.selected", { count: selected.length })}
-        </Text>
-        {filtersActive && (
-          <Button size="1" variant="ghost" onClick={clearFilters}>
-            {t("notification.offline.clear_filters", "清除筛选")}
-          </Button>
-        )}
-      </Flex>
-
-      <Flex gap="2" align="center" wrap="wrap">
-        <Button
-          size="2"
-          variant="soft"
-          disabled={noneSelected}
-          onClick={() => runBatchSwitch(OFFLINE_ENDPOINT, true)}
-        >
-          {t("notification.offline.batch_offline_on", "开启离线通知")}
-        </Button>
-        <Button
-          size="2"
-          variant="soft"
-          color="gray"
-          disabled={noneSelected}
-          onClick={() => runBatchSwitch(OFFLINE_ENDPOINT, false)}
-        >
-          {t("notification.offline.batch_offline_off", "关闭离线通知")}
-        </Button>
-        <Button
-          size="2"
-          variant="soft"
-          disabled={noneSelected}
-          onClick={() => runBatchSwitch(CN_BLOCKED_ENDPOINT, true)}
-        >
-          {t("notification.offline.batch_cn_on", "开启被墙通知")}
-        </Button>
-        <Button
-          size="2"
-          variant="soft"
-          color="gray"
-          disabled={noneSelected}
-          onClick={() => runBatchSwitch(CN_BLOCKED_ENDPOINT, false)}
-        >
-          {t("notification.offline.batch_cn_off", "关闭被墙通知")}
-        </Button>
-        <Dialog.Root open={batchDialogOpen} onOpenChange={setBatchDialogOpen}>
-          <Dialog.Trigger>
-            <Button
-              variant="soft"
-              onClick={() => {
-                // 默认取第一个选中项的配置作为初始值
-                setBatchForm(valuesOf(selected[0]));
-              }}
-              disabled={noneSelected}
-            >
-              {t("notification.offline.batch_edit")}
-            </Button>
-          </Dialog.Trigger>
-          <Dialog.Content>
-            <Dialog.Title>{t("notification.offline.batch_edit")}</Dialog.Title>
-            <NotificationEditForm
-              initialValues={batchForm}
-              loading={batchLoading}
-              onSubmit={handleBatchEdit}
-              onCancel={() => setBatchDialogOpen(false)}
+      <div className="flex flex-col gap-3">
+        <div className="nn-toolbar">
+          <div className="nn-search">
+            <Search size={15} />
+            <input
+              type="text"
+              value={search}
+              placeholder={t(
+                "notification.offline.search_placeholder",
+                "搜索名称或 IP，可粘贴多个"
+              )}
+              onChange={(e) => setSearch(e.target.value)}
+              onPaste={handleSearchPaste}
             />
-          </Dialog.Content>
-        </Dialog.Root>
-      </Flex>
+          </div>
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger>
+              <button
+                type="button"
+                className="nn-btn"
+                data-active={statusFilterCount > 0}
+              >
+                <ListFilter size={15} />
+                {t("notification.offline.filter", "筛选")}
+                {statusFilterCount > 0 && (
+                  <span className="nn-badge">{statusFilterCount}</span>
+                )}
+              </button>
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Content align="start" variant="soft">
+              <StatusFilterGroup
+                label={t("notification.offline.col_offline", "离线通知")}
+                value={offlineFilter}
+                onChange={setOfflineFilter}
+              />
+              <DropdownMenu.Separator />
+              <StatusFilterGroup
+                label={t("notification.offline.col_cn", "被墙通知")}
+                value={cnFilter}
+                onChange={setCnFilter}
+              />
+            </DropdownMenu.Content>
+          </DropdownMenu.Root>
+          {filtersActive && (
+            <span className="nn-count">
+              {filtered.length} / {nodes.length}
+              <span className="nn-link" onClick={clearFilters}>
+                {t("notification.offline.clear_filters", "清除")}
+              </span>
+            </span>
+          )}
+        </div>
+        {unmatched.length > 0 && (
+          <div className="nn-missing">
+            {t("notification.offline.not_found", "未找到：")}
+            <code>{unmatched.join("  ")}</code>
+          </div>
+        )}
+        {(groups.length > 0 || ungroupedCount > 0) && (
+          <GroupFilterPills
+            groups={groups}
+            counts={groupCounts}
+            total={nodes.length}
+            ungroupedCount={ungroupedCount}
+            groupFilter={groupFilter}
+            setGroupFilter={setGroupFilter}
+          />
+        )}
+      </div>
 
-      <NotificationTable
-        filtered={filtered}
-        valuesOf={valuesOf}
-        lastNotifiedOf={(uuid) => confByUUID.get(uuid)?.last_notified}
-        selected={selected}
-        onSelectionChange={setSelected}
+      <div className="nn-table-card">
+        <div className="nn-table-scroll">
+          <table className="nn-table">
+            <thead>
+              <tr>
+                <th className="nn-col-check">
+                  <Checkbox
+                    checked={checkState(allUUIDs, selected)}
+                    onCheckedChange={(c) => toggleMany(allUUIDs, !!c)}
+                  />
+                </th>
+                <th>{t("notification.offline.col_node", "节点")}</th>
+                <th>{t("notification.offline.col_offline", "离线通知")}</th>
+                <th>{t("notification.offline.col_cn", "被墙通知")}</th>
+                <th>{t("notification.offline.grace_period", "宽限期")}</th>
+                <th>{t("notification.offline.last_notified", "最后通知")}</th>
+                <th className="nn-col-action" />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="nn-empty">
+                    {t("notification.offline.no_match", "没有符合条件的节点")}
+                  </td>
+                </tr>
+              )}
+              {filtered.map((node) => (
+                <NodeRow
+                  key={node.uuid}
+                  node={node}
+                  values={valuesOf(node.uuid)}
+                  lastNotified={confByUUID.get(node.uuid)?.last_notified}
+                  checked={selected.includes(node.uuid)}
+                  onCheckedChange={(c) => toggleMany([node.uuid], c)}
+                  onEdit={() => setEditing({ kind: "node", node })}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {selected.length > 0 && (
+        <div className="nn-bar" role="toolbar">
+          <span className="nn-bar-count">
+            {t("notification.offline.selected_count", {
+              count: selected.length,
+              defaultValue: "已选 {{count}}",
+            })}
+          </span>
+          <span className="nn-bar-sep" />
+          <span className="nn-bar-label">
+            {t("notification.offline.col_offline", "离线通知")}
+          </span>
+          <button
+            type="button"
+            className="nn-bar-btn"
+            disabled={batchBusy}
+            onClick={() => runBatchSwitch(OFFLINE_ENDPOINT, true)}
+          >
+            <Bell size={14} />
+            {t("notification.offline.on", "开")}
+          </button>
+          <button
+            type="button"
+            className="nn-bar-btn"
+            disabled={batchBusy}
+            onClick={() => runBatchSwitch(OFFLINE_ENDPOINT, false)}
+          >
+            <BellOff size={14} />
+            {t("notification.offline.off", "关")}
+          </button>
+          <span className="nn-bar-sep" />
+          <span className="nn-bar-label">
+            {t("notification.offline.col_cn", "被墙通知")}
+          </span>
+          <button
+            type="button"
+            className="nn-bar-btn"
+            disabled={batchBusy}
+            onClick={() => runBatchSwitch(CN_BLOCKED_ENDPOINT, true)}
+          >
+            <ShieldCheck size={14} />
+            {t("notification.offline.on", "开")}
+          </button>
+          <button
+            type="button"
+            className="nn-bar-btn"
+            disabled={batchBusy}
+            onClick={() => runBatchSwitch(CN_BLOCKED_ENDPOINT, false)}
+          >
+            <ShieldOff size={14} />
+            {t("notification.offline.off", "关")}
+          </button>
+          <span className="nn-bar-sep" />
+          <button
+            type="button"
+            className="nn-bar-btn"
+            disabled={batchBusy}
+            onClick={() => setEditing({ kind: "batch", uuids: [...selected] })}
+          >
+            <Pencil size={14} />
+            {t("notification.offline.edit", "编辑")}
+          </button>
+          <button
+            type="button"
+            className="nn-bar-btn"
+            title={t("notification.offline.clear_selection", "取消选择")}
+            onClick={() => setSelected([])}
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
+      <EditDialog
+        target={editing}
+        initialValues={
+          !editing
+            ? defaults
+            : editing.kind === "defaults"
+            ? defaults
+            : editing.kind === "node"
+            ? valuesOf(editing.node.uuid)
+            : valuesOf(editing.uuids[0])
+        }
+        onClose={() => setEditing(null)}
+        onSave={saveEdit}
       />
-
-      <label className="text-sm text-muted-foreground">
-        <span
-          dangerouslySetInnerHTML={{ __html: t("notification.offline.tips") }}
-        />
-      </label>
     </div>
   );
 };
 
-// 表头勾选状态：全选 / 部分 / 未选。
+// 一批节点的勾选状态：全选 / 部分 / 未选。
 const checkState = (uuids: string[], selected: string[]) => {
   if (uuids.length === 0) return false;
   const n = uuids.filter((id) => selected.includes(id)).length;
   return n === 0 ? false : n === uuids.length ? true : "indeterminate";
 };
 
-// 节点平铺列表（按权重排序）；分组用上方的分组胶囊筛选，列表里不再分段。
-const NotificationTable = ({
-  filtered,
-  valuesOf,
-  lastNotifiedOf,
-  selected,
-  onSelectionChange,
+const StatusFilterGroup = ({
+  label,
+  value,
+  onChange,
 }: {
-  filtered: NodeDetail[];
-  valuesOf: (uuid: string) => EditValues;
-  lastNotifiedOf: (uuid: string) => string | undefined;
-  selected: string[];
-  onSelectionChange: (ids: string[]) => void;
+  label: string;
+  value: StatusFilter;
+  onChange: (v: StatusFilter) => void;
 }) => {
   const { t } = useTranslation();
-  // 勾选 / 取消一批节点，保留其它已选项。
-  const toggleMany = (uuids: string[], checked: boolean) => {
-    const rest = selected.filter((id) => !uuids.includes(id));
-    onSelectionChange(checked ? [...rest, ...uuids] : rest);
-  };
-  const allUUIDs = filtered.map((n) => n.uuid);
-  const columns = 8;
-
   return (
-    <div className="rounded-lg overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-6">
-              <Checkbox
-                checked={checkState(allUUIDs, selected)}
-                onCheckedChange={(checked) => toggleMany(allUUIDs, !!checked)}
-              />
-            </TableHead>
-            <TableHead>{t("common.server")}</TableHead>
-            <TableHead>IP</TableHead>
-            <TableHead>
-              {t("notification.offline.offline_switch", "离线 / 上线通知")}
-            </TableHead>
-            <TableHead>
-              {t("notification.offline.cn_blocked_switch", "被墙通知")}
-            </TableHead>
-            <TableHead>{t("notification.offline.grace_period")}</TableHead>
-            <TableHead>{t("notification.offline.last_notified")}</TableHead>
-            <TableHead>{t("common.action")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filtered.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={columns} className="text-center">
-                <Text size="2" color="gray">
-                  {t("notification.offline.no_match", "没有符合条件的节点")}
-                </Text>
-              </TableCell>
-            </TableRow>
-          )}
-          {filtered.map((node) => (
-            <NodeRow
-              key={node.uuid}
-              node={node}
-              values={valuesOf(node.uuid)}
-              lastNotified={lastNotifiedOf(node.uuid)}
-              checked={selected.includes(node.uuid)}
-              onCheckedChange={(checked) => toggleMany([node.uuid], checked)}
-            />
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+    <>
+      <DropdownMenu.Label>{label}</DropdownMenu.Label>
+      <DropdownMenu.RadioGroup
+        value={value}
+        onValueChange={(v) => onChange(v as StatusFilter)}
+      >
+        <DropdownMenu.RadioItem value="all">
+          {t("notification.offline.filter_all", "全部")}
+        </DropdownMenu.RadioItem>
+        <DropdownMenu.RadioItem value="on">
+          {t("notification.offline.filter_on", "已开启")}
+        </DropdownMenu.RadioItem>
+        <DropdownMenu.RadioItem value="off">
+          {t("notification.offline.filter_off", "已关闭")}
+        </DropdownMenu.RadioItem>
+      </DropdownMenu.RadioGroup>
+    </>
   );
 };
 
@@ -788,78 +654,65 @@ const NodeRow = ({
   lastNotified,
   checked,
   onCheckedChange,
+  onEdit,
 }: {
   node: NodeDetail;
   values: EditValues;
   lastNotified: string | undefined;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
+  onEdit: () => void;
 }) => {
   const { t } = useTranslation();
+  const last = relativeTime(lastNotified, t);
   return (
-    <TableRow>
-      <TableCell>
+    <tr data-selected={checked}>
+      <td className="nn-col-check">
         <Checkbox
           checked={checked}
           onCheckedChange={(c) => onCheckedChange(!!c)}
         />
-      </TableCell>
-      <TableCell>{node.name}</TableCell>
-      <TableCell>
-        <NodeIPs ipv4={node.ipv4} ipv6={node.ipv6} />
-      </TableCell>
-      <TableCell>
+      </td>
+      <td>
+        <div className="nn-name">{node.name}</div>
+        {(node.ipv4 || node.ipv6) && (
+          <div className="nn-ip">
+            {node.ipv4 && <span>{node.ipv4}</span>}
+            {node.ipv6 && <span title={node.ipv6}>{shortV6(node.ipv6)}</span>}
+          </div>
+        )}
+      </td>
+      <td>
         <InlineSwitch
           uuid={node.uuid}
           checked={values.enable}
           endpoint={OFFLINE_ENDPOINT}
         />
-      </TableCell>
-      <TableCell>
+      </td>
+      <td>
         <InlineSwitch
           uuid={node.uuid}
           checked={values.cn_blocked}
           endpoint={CN_BLOCKED_ENDPOINT}
         />
-      </TableCell>
-      <TableCell>
-        {values.grace_period}
-        {t("nodeCard.time_second")}
-      </TableCell>
-      <TableCell>
-        {(() => {
-          if (!lastNotified) return "-";
-          const date = new Date(lastNotified);
-          if (date.getFullYear() < 3)
-            return t("notification.offline.never_triggered");
-          return date.toLocaleString();
-        })()}
-      </TableCell>
-      <TableCell>
-        <ActionButtons uuid={node.uuid} initialValues={values} />
-      </TableCell>
-    </TableRow>
-  );
-};
-
-// NodeIPs 显示节点的 IPv4 / IPv6（各占一行，等宽字体便于核对）；过长的 IPv6 中间省略，悬停看全。
-const NodeIPs = ({ ipv4, ipv6 }: { ipv4?: string; ipv6?: string }) => {
-  if (!ipv4 && !ipv6) return <span className="text-muted-foreground">-</span>;
-  const shortV6 = (ip: string) => {
-    const segments = ip.split(":");
-    return ip.length > 20 && segments.length > 3
-      ? `${segments.slice(0, 2).join(":")}:...${segments[segments.length - 1]}`
-      : ip;
-  };
-  return (
-    <div className="flex flex-col font-mono text-xs leading-5">
-      {ipv4 && <span>{ipv4}</span>}
-      {ipv6 && (
-        <span className="text-muted-foreground" title={ipv6}>
-          {shortV6(ipv6)}
+      </td>
+      <td className="nn-muted">
+        {values.grace_period} {t("nodeCard.time_second", "秒")}
+      </td>
+      <td className="nn-muted" title={last?.full}>
+        {last ? last.text : "—"}
+      </td>
+      <td className="nn-col-action">
+        <span
+          role="button"
+          className="nn-icon-btn"
+          title={t("common.edit")}
+          onClick={onEdit}
+        >
+          <Pencil size={15} />
         </span>
-      )}
-    </div>
+      </td>
+    </tr>
   );
 };
 
@@ -888,26 +741,11 @@ const InlineSwitch = ({
         setValue(next);
         setSaving(true);
         try {
-          const res = await fetch(
-            `${endpoint}/${next ? "enable" : "disable"}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify([uuid]),
-            }
-          );
-          if (!res.ok) {
-            const data = await res.json().catch(() => null);
-            throw new Error(data?.message || res.statusText);
-          }
+          await postJSON(`${endpoint}/${next ? "enable" : "disable"}`, [uuid]);
           await refresh();
         } catch (error) {
           setValue(!next);
-          toast.error(
-            t("common.error", {
-              message: error instanceof Error ? error.message : String(error),
-            })
-          );
+          toast.error(t("common.error", { message: errorText(error) }));
         } finally {
           setSaving(false);
         }
@@ -916,66 +754,143 @@ const InlineSwitch = ({
   );
 };
 
-const ActionButtons = ({
-  uuid,
+const EditDialog = ({
+  target,
   initialValues,
+  onClose,
+  onSave,
 }: {
-  uuid: string;
+  target: EditTarget | null;
   initialValues: EditValues;
+  onClose: () => void;
+  onSave: (target: EditTarget, values: EditValues) => Promise<void>;
 }) => {
   const { t } = useTranslation();
-  const { refresh } = useOfflineNotification();
-  const [editOpen, setEditOpen] = React.useState(false);
-  const [editSaving, setEditSaving] = React.useState(false);
+  const [values, setValues] = React.useState(initialValues);
+  const [grace, setGrace] = React.useState(String(initialValues.grace_period));
+  const [saving, setSaving] = React.useState(false);
+
+  // 每次打开都从目标的当前值开始
+  React.useEffect(() => {
+    if (target) {
+      setValues(initialValues);
+      setGrace(String(initialValues.grace_period));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target]);
+
+  if (!target) return null;
+  const title =
+    target.kind === "defaults"
+      ? t("notification.offline.defaults_title", "新节点默认")
+      : target.kind === "batch"
+      ? t("notification.offline.batch_title", {
+          count: target.uuids.length,
+          defaultValue: "批量编辑 {{count}} 个节点",
+        })
+      : target.node.name;
+  const description =
+    target.kind === "defaults"
+      ? t(
+          "notification.offline.defaults_desc",
+          "用于新加入、还没单独设置过的节点；已设置过的节点不受影响。"
+        )
+      : target.kind === "batch"
+      ? t(
+          "notification.offline.batch_desc",
+          "以下设置会覆盖所选节点的当前配置。"
+        )
+      : [target.node.ipv4, target.node.ipv6].filter(Boolean).join(" · ");
+  const graceNum = Math.floor(Number(grace));
+  const graceValid = Number.isFinite(graceNum) && graceNum > 0;
 
   return (
-    <Flex gap="2" align="center">
-      <Dialog.Root open={editOpen} onOpenChange={setEditOpen}>
-        <Dialog.Trigger>
-          <IconButton variant="ghost">
-            <Pencil size={16} />
-          </IconButton>
-        </Dialog.Trigger>
-        <Dialog.Content>
-          <Dialog.Title>{t("common.edit")}</Dialog.Title>
-          <NotificationEditForm
-            initialValues={initialValues}
-            loading={editSaving}
-            onSubmit={(values) => {
-              setEditSaving(true);
-              fetch(`${OFFLINE_ENDPOINT}/edit`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify([toEditPayload(uuid, values)]),
-              })
-                .then((res) => {
-                  if (!res.ok) {
-                    toast.error(
-                      "Failed to save offline notification settings: " +
-                        res.statusText
-                    );
-                  }
-                  toast.success(t("common.updated_successfully"));
-                  return res.json();
-                })
-                .then(() => {
-                  setEditOpen(false);
-                  refresh();
-                  setEditSaving(false);
-                })
-                .catch((error) => {
-                  console.error(
-                    "Error saving offline notification settings:",
-                    error
-                  );
-                  toast.error(t("common.error", { message: error.message }));
-                });
-            }}
-            onCancel={() => setEditOpen(false)}
-          />
-        </Dialog.Content>
-      </Dialog.Root>
-    </Flex>
+    <Dialog.Root open onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Content maxWidth="440px">
+        <Dialog.Title mb="1">{title}</Dialog.Title>
+        <Dialog.Description size="2" color="gray">
+          {description || " "}
+        </Dialog.Description>
+        <form
+          className="nn-form mt-2"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!graceValid) return;
+            setSaving(true);
+            await onSave(target, { ...values, grace_period: graceNum });
+            setSaving(false);
+          }}
+        >
+          <label className="nn-form-row">
+            <div>
+              <div className="nn-form-label">
+                {t("notification.offline.offline_switch", "离线 / 上线通知")}
+              </div>
+              <div className="nn-form-desc">
+                {t(
+                  "notification.offline.offline_desc",
+                  "掉线超过宽限期时通知，恢复后再通知一次"
+                )}
+              </div>
+            </div>
+            <Switch
+              checked={values.enable}
+              onCheckedChange={(v) => setValues((s) => ({ ...s, enable: v }))}
+            />
+          </label>
+          <label className="nn-form-row">
+            <div>
+              <div className="nn-form-label">
+                {t("notification.offline.cn_blocked_switch", "被墙通知")}
+              </div>
+              <div className="nn-form-desc">
+                {t(
+                  "notification.offline.cn_blocked_desc",
+                  "被墙、恢复、被墙期间掉线时通知"
+                )}
+              </div>
+            </div>
+            <Switch
+              checked={values.cn_blocked}
+              onCheckedChange={(v) =>
+                setValues((s) => ({ ...s, cn_blocked: v }))
+              }
+            />
+          </label>
+          <label className="nn-form-row">
+            <div>
+              <div className="nn-form-label">
+                {t("notification.offline.grace_period", "宽限期")}
+              </div>
+              <div className="nn-form-desc">
+                {t("notification.offline.grace_period_tip")}
+              </div>
+            </div>
+            <span className="nn-num">
+              <input
+                type="number"
+                min={1}
+                value={grace}
+                onChange={(e) => setGrace(e.target.value)}
+              />
+              <span>{t("nodeCard.time_second", "秒")}</span>
+            </span>
+          </label>
+          <div className="nn-dialog-footer">
+            <button type="button" className="nn-btn" onClick={onClose}>
+              {t("common.cancel")}
+            </button>
+            <button
+              type="submit"
+              className="nn-btn nn-btn-primary"
+              disabled={saving || !graceValid}
+            >
+              {t("common.save")}
+            </button>
+          </div>
+        </form>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 };
 
