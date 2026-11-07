@@ -453,13 +453,17 @@
     "offline": {
       "batch_edit": "Batch Edit",
       "cooldown": "Cooldown Period",
-      "full_title": "Offline Alerts Configuration",
+      "full_title": "Node Alerts Configuration",
       "grace_period": "Grace Period",
       "grace_period_tip": "A grace period of less than 45 seconds may not trigger online notifications in time.",
       "last_notified": "Last notified",
       "never_triggered": "Never triggered",
-      "tips": "To prevent frequent notifications, we use a grace period:</br> <b>Grace Period</b>: If a client goes offline and doesn't reconnect within this time, an offline notification will be sent.",
-      "title": "Offline"
+      "tips": "To prevent frequent notifications, we use a grace period:</br> <b>Grace Period</b>: If a client goes offline and doesn't reconnect within this time, an offline notification will be sent.</br> <b>CN-blocked alerts</b>: sent for every node by default; turn them off here for special nodes whose status flaps often. The master switch is under Notification - General.",
+      "title": "Nodes",
+      "offline_switch": "Offline / online alerts",
+      "cn_blocked_switch": "CN-blocked alerts",
+      "cn_blocked_tip": "When off, this node no longer sends blocked / recovered / offline-while-blocked alerts. The blocked badge on the dashboard is unaffected.",
+      "search_placeholder": "Search name / IP"
     },
     "title": "Notification",
     "traffic_report": {

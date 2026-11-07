@@ -20,7 +20,6 @@ import React from "react";
 import { Pencil, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
-  Badge,
   Button,
   Dialog,
   Flex,
@@ -41,39 +40,82 @@ const OfflinePage = () => {
     </OfflineNotificationProvider>
   );
 };
+type EditValues = {
+  enable: boolean;
+  cooldown: number;
+  grace_period: number;
+  // 被墙通知是否开启（界面用正向开关，提交时转成后端的 cn_blocked_muted）
+  cn_blocked: boolean;
+};
+
+// 节点没有配置行时的默认值：离线通知关、被墙通知开（与后端默认一致）。
+const configOf = (n: OfflineNotification | undefined): EditValues => ({
+  enable: n?.enable ?? false,
+  cooldown: n?.cooldown ?? 1800,
+  grace_period: n?.grace_period ?? 300,
+  cn_blocked: !(n?.cn_blocked_muted ?? false),
+});
+
+const toEditPayload = (client: string, v: EditValues) => ({
+  client,
+  enable: v.enable,
+  cooldown: v.cooldown,
+  grace_period: v.grace_period,
+  cn_blocked_muted: !v.cn_blocked,
+});
+
 const NotificationEditForm = ({
   initialValues,
   onSubmit,
   loading,
   onCancel,
 }: {
-  initialValues: { enable: boolean; cooldown: number; grace_period: number };
-  onSubmit: (values: {
-    enable: boolean;
-    cooldown: number;
-    grace_period: number;
-  }) => void;
+  initialValues: EditValues;
+  onSubmit: (values: EditValues) => void;
   loading?: boolean;
   onCancel?: () => void;
 }) => {
   const { t } = useTranslation();
   const [enabled, setEnabled] = React.useState(initialValues.enable);
+  const [cnBlocked, setCnBlocked] = React.useState(initialValues.cn_blocked);
   // const [cooldown, setCooldown] = React.useState(initialValues.cooldown);
   const [grace, setGrace] = React.useState(initialValues.grace_period);
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        onSubmit({ enable: enabled, cooldown: 3000, grace_period: grace });
+        onSubmit({
+          enable: enabled,
+          cooldown: 3000,
+          grace_period: grace,
+          cn_blocked: cnBlocked,
+        });
       }}
       className="flex flex-col gap-2"
     >
-      <label htmlFor="status">{t("common.status")}</label>
+      <label htmlFor="status">
+        {t("notification.offline.offline_switch", "离线 / 上线通知")}
+      </label>
       <Switch
         id="status"
         name="status"
         checked={enabled}
         onCheckedChange={setEnabled}
+      />
+      <label htmlFor="cn_blocked" className="flex items-center gap-2">
+        {t("notification.offline.cn_blocked_switch", "被墙通知")}
+        <Tips>
+          {t(
+            "notification.offline.cn_blocked_tip",
+            "关闭后，该节点被墙、恢复、被墙期间掉线都不再推送；面板上的被墙标记照常显示。"
+          )}
+        </Tips>
+      </label>
+      <Switch
+        id="cn_blocked"
+        name="cn_blocked"
+        checked={cnBlocked}
+        onCheckedChange={setCnBlocked}
       />
       {/* <label htmlFor="cooldown">{t("notification.offline.cooldown")}</label>
       <TextField.Root
@@ -85,7 +127,8 @@ const NotificationEditForm = ({
         name="cooldown"
       /> */}
       <label htmlFor="grace_period" className="flex items-center gap-2">
-        {t("notification.offline.grace_period")}<Tips>{t("notification.offline.grace_period_tip")}</Tips>
+        {t("notification.offline.grace_period")}
+        <Tips>{t("notification.offline.grace_period_tip")}</Tips>
       </label>
       <TextField.Root
         type="number"
@@ -129,25 +172,17 @@ const InnerLayout = () => {
   const { t } = useTranslation();
   const [batchLoading, setBatchLoading] = React.useState(false);
   const [batchDialogOpen, setBatchDialogOpen] = React.useState(false);
-  const [batchForm, setBatchForm] = React.useState({
+  const [batchForm, setBatchForm] = React.useState<EditValues>({
     enable: true,
     cooldown: 1800,
     grace_period: 300,
+    cn_blocked: true,
   });
 
   // 批量修改
-  const handleBatchEdit = (values: {
-    enable: boolean;
-    cooldown: number;
-    grace_period: number;
-  }) => {
+  const handleBatchEdit = (values: EditValues) => {
     setBatchLoading(true);
-    const payload = selected.map((id) => ({
-      client: id,
-      enable: values.enable,
-      cooldown: values.cooldown,
-      grace_period: values.grace_period,
-    }));
+    const payload = selected.map((id) => toEditPayload(id, values));
     fetch("/api/admin/notification/offline/edit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -185,12 +220,15 @@ const InnerLayout = () => {
     <div className="flex flex-col gap-4 md:p-4 p-1">
       <Flex justify="between" align="center" wrap="wrap">
         <label className="text-2xl font-semibold">
-          {t("notification.offline.full_title", "离线通知设置")}
+          {t("notification.offline.full_title", "节点通知设置")}
         </label>
         <TextField.Root
           type="text"
           className="max-w-64"
-          placeholder={t("common.search")}
+          placeholder={t(
+            "notification.offline.search_placeholder",
+            "搜索名称 / IP"
+          )}
           value={search}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             setSearch(e.target.value)
@@ -221,11 +259,11 @@ const InnerLayout = () => {
                 const first = offlineNotification.find(
                   (n) => n.client === selected[0]
                 );
-                setBatchForm({
-                  enable: first?.enable ?? true,
-                  cooldown: first?.cooldown ?? 1800,
-                  grace_period: first?.grace_period ?? 300,
-                });
+                setBatchForm(
+                  first
+                    ? configOf(first)
+                    : { ...configOf(undefined), enable: true }
+                );
               }}
               disabled={batchLoading || selected.length === 0}
             >
@@ -264,9 +302,17 @@ const OfflineNotificationTable = ({
   const { offlineNotification } = useOfflineNotification();
   const { nodeDetail } = useNodeDetails();
   const { t } = useTranslation();
+  // 名称、IPv4、IPv6 任一包含关键字即命中（节点多按 IP 找）。
+  const keyword = search.trim().toLowerCase();
   const filtered = [...nodeDetail]
     .sort((a, b) => a.weight - b.weight)
-    .filter((node) => node.name.toLowerCase().includes(search.toLowerCase()));
+    .filter(
+      (node) =>
+        !keyword ||
+        [node.name, node.ipv4, node.ipv6].some((v) =>
+          (v || "").toLowerCase().includes(keyword)
+        )
+    );
   return (
     <div className="rounded-lg overflow-hidden">
       <Table>
@@ -287,7 +333,13 @@ const OfflineNotificationTable = ({
               />
             </TableHead>
             <TableHead>{t("common.server")}</TableHead>
-            <TableHead>{t("common.status")}</TableHead>
+            <TableHead>IP</TableHead>
+            <TableHead>
+              {t("notification.offline.offline_switch", "离线 / 上线通知")}
+            </TableHead>
+            <TableHead>
+              {t("notification.offline.cn_blocked_switch", "被墙通知")}
+            </TableHead>
             {/* <TableHead>{t("notification.offline.cooldown")}</TableHead> */}
             <TableHead>{t("notification.offline.grace_period")}</TableHead>
             <TableHead>{t("notification.offline.last_notified")}</TableHead>
@@ -295,79 +347,156 @@ const OfflineNotificationTable = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filtered.map((node) => (
-            <TableRow key={node.uuid}>
-              <TableCell>
-                <Checkbox
-                  checked={selected.includes(node.uuid)}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      onSelectionChange([...selected, node.uuid]);
-                    } else {
-                      onSelectionChange(
-                        selected.filter((id) => id !== node.uuid)
-                      );
-                    }
-                  }}
-                />
-              </TableCell>
-              <TableCell>{node.name}</TableCell>
-              <TableCell>
-                <Badge
-                  color={
-                    offlineNotification.find((n) => n.client === node.uuid)
-                      ?.enable
-                      ? "green"
-                      : "red"
-                  }
-                >
-                  {offlineNotification.find((n) => n.client === node.uuid)
-                    ?.enable
-                    ? t("common.enabled")
-                    : t("common.disabled")}
-                </Badge>
-              </TableCell>
-              {/* <TableCell>
+          {filtered.map((node) => {
+            const conf = offlineNotification.find(
+              (n) => n.client === node.uuid
+            );
+            const values = configOf(conf);
+            return (
+              <TableRow key={node.uuid}>
+                <TableCell>
+                  <Checkbox
+                    checked={selected.includes(node.uuid)}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        onSelectionChange([...selected, node.uuid]);
+                      } else {
+                        onSelectionChange(
+                          selected.filter((id) => id !== node.uuid)
+                        );
+                      }
+                    }}
+                  />
+                </TableCell>
+                <TableCell>{node.name}</TableCell>
+                <TableCell>
+                  <NodeIPs ipv4={node.ipv4} ipv6={node.ipv6} />
+                </TableCell>
+                <TableCell>
+                  <InlineSwitch
+                    uuid={node.uuid}
+                    checked={values.enable}
+                    endpoint="/api/admin/notification/offline"
+                  />
+                </TableCell>
+                <TableCell>
+                  <InlineSwitch
+                    uuid={node.uuid}
+                    checked={values.cn_blocked}
+                    endpoint="/api/admin/notification/offline/cn-blocked"
+                  />
+                </TableCell>
+                {/* <TableCell>
                 {offlineNotification.find((n) => n.client === node.uuid)
                   ?.cooldown || 1800}{" "}
                 {t("nodeCard.time_second")}
               </TableCell> */}
-              <TableCell>
-                {offlineNotification.find((n) => n.client === node.uuid)
-                  ?.grace_period || 300}
-                {t("nodeCard.time_second")}
-              </TableCell>
-              <TableCell>
-                {(() => {
-                  const lastNotified = offlineNotification.find(
-                    (n) => n.client === node.uuid
-                  )?.last_notified;
-                  if (!lastNotified) return "-";
-                  const date = new Date(lastNotified);
-                  if (date.getFullYear() < 3)
-                    return t("notification.offline.never_triggered");
-                  return date.toLocaleString();
-                })()}
-              </TableCell>
-              <TableCell>
-                <ActionButtons
-                  offlineNotifications={offlineNotification.find(
-                    (n) => n.client === node.uuid
-                  )}
-                />
-              </TableCell>
-            </TableRow>
-          ))}
+                <TableCell>
+                  {conf?.grace_period || 300}
+                  {t("nodeCard.time_second")}
+                </TableCell>
+                <TableCell>
+                  {(() => {
+                    const lastNotified = conf?.last_notified;
+                    if (!lastNotified) return "-";
+                    const date = new Date(lastNotified);
+                    if (date.getFullYear() < 3)
+                      return t("notification.offline.never_triggered");
+                    return date.toLocaleString();
+                  })()}
+                </TableCell>
+                <TableCell>
+                  <ActionButtons uuid={node.uuid} initialValues={values} />
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>
   );
 };
 
-const ActionButtons = ({
-  offlineNotifications,
+// NodeIPs 显示节点的 IPv4 / IPv6（各占一行，等宽字体便于核对）；过长的 IPv6 中间省略，悬停看全。
+const NodeIPs = ({ ipv4, ipv6 }: { ipv4?: string; ipv6?: string }) => {
+  if (!ipv4 && !ipv6) return <span className="text-muted-foreground">-</span>;
+  const shortV6 = (ip: string) => {
+    const segments = ip.split(":");
+    return ip.length > 20 && segments.length > 3
+      ? `${segments.slice(0, 2).join(":")}:...${segments[segments.length - 1]}`
+      : ip;
+  };
+  return (
+    <div className="flex flex-col font-mono text-xs leading-5">
+      {ipv4 && <span>{ipv4}</span>}
+      {ipv6 && (
+        <span className="text-muted-foreground" title={ipv6}>
+          {shortV6(ipv6)}
+        </span>
+      )}
+    </div>
+  );
+};
+
+// InlineSwitch 在表格里直接开关单个节点的某项通知：POST {endpoint}/enable|disable，参数为 [uuid]。
+const InlineSwitch = ({
+  uuid,
+  checked,
+  endpoint,
 }: {
-  offlineNotifications: OfflineNotification | undefined;
+  uuid: string;
+  checked: boolean;
+  endpoint: string;
+}) => {
+  const { t } = useTranslation();
+  const { refresh } = useOfflineNotification();
+  const [value, setValue] = React.useState(checked);
+  const [saving, setSaving] = React.useState(false);
+  React.useEffect(() => setValue(checked), [checked]);
+
+  return (
+    <Switch
+      size="1"
+      checked={value}
+      disabled={saving}
+      onCheckedChange={async (next) => {
+        setValue(next);
+        setSaving(true);
+        try {
+          const res = await fetch(
+            `${endpoint}/${next ? "enable" : "disable"}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify([uuid]),
+            }
+          );
+          if (!res.ok) {
+            const data = await res.json().catch(() => null);
+            throw new Error(data?.message || res.statusText);
+          }
+          await refresh();
+        } catch (error) {
+          setValue(!next);
+          toast.error(
+            t("common.error", {
+              message: error instanceof Error ? error.message : String(error),
+            })
+          );
+        } finally {
+          setSaving(false);
+        }
+      }}
+    />
+  );
+};
+
+const ActionButtons = ({
+  uuid,
+  initialValues,
+}: {
+  uuid: string;
+  initialValues: EditValues;
 }) => {
   const { t } = useTranslation();
   const { refresh } = useOfflineNotification();
@@ -385,23 +514,14 @@ const ActionButtons = ({
         <Dialog.Content>
           <Dialog.Title>{t("common.edit")}</Dialog.Title>
           <NotificationEditForm
-            initialValues={{
-              enable: offlineNotifications?.enable ?? false,
-              cooldown: offlineNotifications?.cooldown ?? 1800,
-              grace_period: offlineNotifications?.grace_period ?? 300,
-            }}
+            initialValues={initialValues}
             loading={editSaving}
             onSubmit={(values) => {
               setEditSaving(true);
               fetch("/api/admin/notification/offline/edit", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify([
-                  {
-                    client: offlineNotifications?.client,
-                    ...values,
-                  },
-                ]),
+                body: JSON.stringify([toEditPayload(uuid, values)]),
               })
                 .then((res) => {
                   if (!res.ok) {

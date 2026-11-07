@@ -453,13 +453,17 @@
     "offline": {
       "batch_edit": "批量修改",
       "cooldown": "冷静期",
-      "full_title": "离线通知设置",
+      "full_title": "节点通知设置",
       "grace_period": "宽限期",
       "grace_period_tip": "低于45秒的宽限期可能会无法及时触发在线通知",
       "last_notified": "最后通知",
       "never_triggered": "从未触发",
-      "tips": "为了避免频繁发送通知，我们设置了宽限期：</br> <b>宽限期</b>：客户端离线后，如果在这段时间内没有重新上线，就会发送离线通知",
-      "title": "离线通知"
+      "tips": "为了避免频繁发送通知，我们设置了宽限期：</br> <b>宽限期</b>：客户端离线后，如果在这段时间内没有重新上线，就会发送离线通知</br> <b>被墙通知</b>：默认所有节点都推送，状态经常变化的特殊节点可在此单独关闭；总开关在「通知 - 通用」",
+      "title": "节点通知",
+      "offline_switch": "离线 / 上线通知",
+      "cn_blocked_switch": "被墙通知",
+      "cn_blocked_tip": "关闭后，该节点被墙、恢复、被墙期间掉线都不再推送；面板上的被墙标记照常显示。",
+      "search_placeholder": "搜索名称 / IP"
     },
     "title": "通知",
     "traffic_report": {

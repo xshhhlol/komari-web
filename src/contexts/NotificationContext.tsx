@@ -6,6 +6,8 @@ export type OfflineNotification = {
   cooldown: number;
   grace_period: number;
   last_notified: string;
+  // 为 true 时不发该节点的被墙 / 恢复 / 被墙期间掉线通知；没有配置行的节点视为 false（照常通知）。
+  cn_blocked_muted?: boolean;
 };
 
 interface OfflineNotificationContextType {
