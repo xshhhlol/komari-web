@@ -916,7 +916,17 @@ const SortableRow = ({
         />
       </TableCell>
       <TableCell>
-        <DetailView node={node} />
+        <div className="flex items-center gap-1">
+          <DetailView node={node} />
+          <span
+            role="button"
+            className="nn-copy"
+            title={t("copy", "复制")}
+            onClick={() => copy(node.name)}
+          >
+            <Copy size={13} />
+          </span>
+        </div>
       </TableCell>
       <TableCell>
         {node.ipv4 && (
