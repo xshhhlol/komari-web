@@ -149,6 +149,10 @@ export const routes: RouteObject[] = [
         element: React.createElement(lazy(() => import("./pages/admin/log"))),
       },
       {
+        path: "benchmark",
+        element: React.createElement(lazy(() => import("./pages/admin/benchmark"))),
+      },
+      {
         path: "exec",
         element: React.createElement(lazy(() => import("./pages/admin/exec"))),
       }

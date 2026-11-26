@@ -75,6 +75,11 @@
       ]
     },
     {
+      "labelKey": "benchmark.title",
+      "path": "/admin/benchmark",
+      "icon": "Activity"
+    },
+    {
       "labelKey": "exec.title",
       "path": "/admin/exec",
       "icon": "Code"
