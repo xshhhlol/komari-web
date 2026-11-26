@@ -573,3 +573,203 @@
   color: var(--gray-11);
   background: var(--gray-a3);
 }
+
+/* 线路测评：分段胶囊单选、状态胶囊、报告弹窗分栏 */
+.nn-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 9px;
+  background: var(--gray-a3);
+  border: 1px solid var(--gray-a4);
+}
+.nn-seg-item {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--gray-11);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.nn-seg-item:hover {
+  color: var(--gray-12);
+}
+.nn-seg-item[data-active="true"] {
+  color: var(--accent-11);
+  background: var(--color-panel-solid);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), inset 0 0 0 1px var(--gray-a5);
+}
+
+.nn-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 23px;
+  padding: 0 9px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.nn-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+.nn-status-pill[data-tone="ok"] {
+  color: var(--green-11);
+  background: var(--green-a3);
+  border-color: var(--green-a5);
+}
+.nn-status-pill[data-tone="ok"] .nn-status-dot {
+  background: var(--green-9);
+}
+.nn-status-pill[data-tone="run"] {
+  color: var(--accent-11);
+  background: var(--accent-a3);
+  border-color: var(--accent-a5);
+}
+.nn-status-pill[data-tone="run"] .nn-status-dot {
+  background: var(--accent-9);
+  animation: nn-pulse 1.4s ease-in-out infinite;
+}
+.nn-status-pill[data-tone="warn"] {
+  color: var(--amber-11);
+  background: var(--amber-a3);
+  border-color: var(--amber-a5);
+}
+.nn-status-pill[data-tone="warn"] .nn-status-dot {
+  background: var(--amber-9);
+}
+.nn-status-pill[data-tone="err"] {
+  color: var(--red-11);
+  background: var(--red-a3);
+  border-color: var(--red-a5);
+}
+.nn-status-pill[data-tone="err"] .nn-status-dot {
+  background: var(--red-9);
+}
+@keyframes nn-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.82); }
+}
+
+.nn-btn-xs {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  color: var(--gray-12);
+  background: var(--color-panel-solid);
+  border: 1px solid var(--gray-a6);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+  text-decoration: none;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.nn-btn-xs:hover {
+  background: var(--gray-2);
+  border-color: var(--gray-a7);
+}
+.nn-btn-xs svg {
+  color: var(--gray-10);
+}
+.nn-btn-xs[data-accent="true"] {
+  color: var(--accent-11);
+  border-color: var(--accent-a6);
+  background: var(--accent-a2);
+}
+.nn-btn-xs[data-accent="true"]:hover {
+  background: var(--accent-a3);
+  border-color: var(--accent-a7);
+}
+.nn-btn-xs[data-accent="true"] svg {
+  color: var(--accent-11);
+}
+
+/* 测评报告查看弹窗 */
+.nn-report-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: var(--gray-11);
+  background: var(--gray-a2);
+  border: 1px solid var(--gray-a4);
+}
+.nn-report-meta b {
+  color: var(--gray-12);
+  font-weight: 500;
+}
+.nn-report-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.nn-report-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--gray-11);
+  background: var(--gray-a2);
+  border: 1px solid var(--gray-a4);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.nn-report-tab:hover {
+  color: var(--gray-12);
+  background: var(--gray-a3);
+}
+.nn-report-tab[data-active="true"] {
+  color: var(--accent-11);
+  background: var(--accent-a3);
+  border-color: var(--accent-a6);
+}
+.nn-report-box {
+  margin-top: 10px;
+  max-height: 56vh;
+  overflow: auto;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #1e293b;
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.35);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.nn-hint-box {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--gray-11);
+  background: var(--gray-a2);
+  border: 1px solid var(--gray-a4);
+}
