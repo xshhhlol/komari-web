@@ -114,6 +114,50 @@ const shortV6 = (ip: string) => {
     : ip;
 };
 
+function AddressCopyButton({ address, family }: {
+  address: string;
+  family: "IPv4" | "IPv6";
+}) {
+  async function copyAddress() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(address);
+      } else {
+        // Komari can also be served over HTTP, where Clipboard API is unavailable.
+        const field = document.createElement("textarea");
+        field.value = address;
+        field.readOnly = true;
+        field.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+        const focused = document.activeElement;
+        document.body.append(field);
+        try {
+          field.select();
+          if (!document.execCommand("copy")) throw new Error("Copy failed");
+        } finally {
+          field.remove();
+          if (focused instanceof HTMLElement) focused.focus();
+        }
+      }
+      toast.success(`${family} 地址已复制`);
+    } catch {
+      toast.error(`无法复制 ${family} 地址`);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className="inline-flex cursor-pointer select-none items-center gap-1 rounded px-1 py-0.5 hover:bg-[var(--gray-a3)] hover:text-[var(--gray-12)] focus-visible:outline-2 focus-visible:outline-[var(--accent-9)]"
+      title={`复制 ${family}：${address}`}
+      aria-label={`复制 ${family}：${address}`}
+      onClick={copyAddress}
+    >
+      {family === "IPv6" ? shortV6(address) : address}
+      <Copy size={12} aria-hidden="true" />
+    </button>
+  );
+}
+
 const getStatusInfo = (
   r: Result
 ): { tone: Exclude<StatusKind, "all">; label: string } => {
@@ -718,11 +762,9 @@ function BenchmarkContent() {
                     <td>
                       <div className="nn-name">{node?.name || r.client}</div>
                       {(node?.ipv4 || node?.ipv6) && (
-                        <div className="nn-ip">
-                          {node.ipv4 && <span>{node.ipv4}</span>}
-                          {node.ipv6 && (
-                            <span title={node.ipv6}>{shortV6(node.ipv6)}</span>
-                          )}
+                        <div className="nn-ip -ml-1 flex flex-wrap gap-x-1">
+                          {node.ipv4 && <AddressCopyButton address={node.ipv4} family="IPv4" />}
+                          {node.ipv6 && <AddressCopyButton address={node.ipv6} family="IPv6" />}
                         </div>
                       )}
                     </td>
